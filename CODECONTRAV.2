@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Contra: The Syntax Wars (Terminal + UI Config + 50 Stages)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Press+Start+2P&family=Lora:ital@1&display=swap');
+        
+        /* --- 🎨 ตัวแปร CSS สำหรับระบบปรับแต่ง UI ส่วนกลาง --- */
+        :root {
+            --accent-color: #ef4444;
+            --accent-border: #b91c1c;
+            --bg-grad-start: #0f172a;
+            --bg-grad-end: #064e3b;
+            --terminal-text-color: #4ade80;
+            --terminal-font-size: 16px;
+        }
+
+        body { 
+            font-family: 'Courier New', Courier, monospace; 
+            background-color: #0a0a0a;
+            color: #e5e5e5;
+            overflow-x: hidden;
+        }
+        
+        .arcade-font { font-family: 'Press Start 2P', cursive; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .book-font { font-family: 'Lora', serif; }
+
+        /* --- Application of Themes --- */
+        .theme-text { color: var(--accent-color) !important; }
+        .theme-border { border-color: var(--accent-border) !important; }
+        .theme-bg-accent { background-color: var(--accent-border) !important; }
+        
+        .jungle-bg {
+            background: linear-gradient(to bottom, var(--bg-grad-start) 0%, var(--bg-grad-end) 100%);
+            border-bottom: 8px solid #3f2e1c;
+            transition: all 1s ease;
+        }
+
+        .boss-bg {
+            background: linear-gradient(to bottom, #450a0a 0%, #000000 100%) !important;
+            border-bottom: 8px solid #7f1d1d !important;
+            animation: boss-alert 2s infinite alternate;
+        }
+        @keyframes boss-alert {
+            0% { box-shadow: inset 0 0 50px rgba(220, 38, 38, 0.2); }
+            100% { box-shadow: inset 0 0 100px rgba(220, 38, 38, 0.8); }
+        }
+        
+        .boss-sprite {
+            transform: scale(1.3) !important;
+            filter: drop-shadow(0 0 15px red);
+            transition: all 1s ease;
+        }
+
+        #soldier {
+            width: 100px; 
+            height: 130px;
+            background-image: url('Gemini_Generated_Image_i3fimhi3fimhi3fi.png');
+            background-size: contain; 
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            image-rendering: pixelated; 
+            position: relative;
+            z-index: 10;
+            transition: background-image 0.3s ease;
+            transform-origin: bottom center;
+            animation: player-idle 2s ease-in-out infinite;
+        }
+
+        #enemy-sprite {
+            width: 80px; height: 80px;
+            background: 
+                linear-gradient(135deg, #7f1d1d 25%, transparent 25%) -40px 0,
+                linear-gradient(225deg, #7f1d1d 25%, transparent 25%) -40px 0,
+                linear-gradient(315deg, #7f1d1d 25%, transparent 25%),
+                linear-gradient(45deg, #7f1d1d 25%, transparent 25%);
+            background-size: 40px 40px;
+            background-color: #991b1b;
+            border: 4px solid #f87171;
+            border-radius: 10px;
+            animation: enemy-hover 3s ease-in-out infinite;
+        }
+
+        @keyframes player-idle {
+            0%, 100% { transform: translateY(0) scaleY(1); }
+            50% { transform: translateY(-3px) scaleY(0.97); }
+        }
+
+        @keyframes enemy-hover {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes recoil {
+            0% { transform: translateX(0); filter: brightness(1); }
+            20% { transform: translateX(-10px) rotate(-5deg); filter: brightness(1.2); }
+            50% { transform: translateX(5px) rotate(2deg); filter: brightness(1.1); }
+            100% { transform: translateX(0); filter: brightness(1); }
+        }
+        #soldier.shooting-recoil { animation: recoil 0.3s ease-out forwards; }
+
+        .bullet {
+            position: absolute;
+            width: 25px; height: 10px;
+            background-color: #facc15;
+            border-radius: 5px;
+            box-shadow: 0 0 10px #facc15, 0 0 20px #ef4444;
+            top: 50%; left: 80px; opacity: 0; z-index: 5;
+        }
+
+        @keyframes shoot-bullet {
+            0% { left: 80px; opacity: 1; }
+            100% { left: calc(100% - 90px); opacity: 1; }
+        }
+        .shooting { animation: shoot-bullet 0.2s linear forwards; }
+
+        @keyframes enemy-shoot {
+            0% { transform: scale(1) translateY(0); filter: brightness(1); }
+            20% { transform: scale(1.2) translateX(10px); filter: brightness(2) hue-rotate(90deg); }
+            50% { transform: scale(1.1) translateX(-5px); }
+            100% { transform: scale(1) translateY(0); filter: brightness(1); }
+        }
+        .enemy-shooting { animation: enemy-shoot 0.3s ease-out forwards; }
+
+        .enemy-bullet {
+            position: absolute;
+            width: 25px; height: 10px;
+            background-color: #ef4444;
+            border-radius: 5px;
+            box-shadow: 0 0 10px #ef4444, 0 0 20px #b91c1c;
+            top: 50%; right: 80px; opacity: 0; z-index: 5;
+        }
+
+        @keyframes enemy-shoot-bullet {
+            0% { right: 80px; opacity: 1; left: auto; }
+            100% { right: calc(100% - 90px); opacity: 1; left: auto; }
+        }
+        .enemy-shooting-bullet { animation: enemy-shoot-bullet 0.2s linear forwards; }
+
+        @keyframes player-hit {
+            0% { transform: translateX(0); filter: brightness(1) sepia(0); }
+            20% { transform: translateX(-15px) rotate(-10deg); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
+            50% { transform: translateX(10px) rotate(5deg); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
+            100% { transform: translateX(0); filter: brightness(1) sepia(0); }
+        }
+        #soldier.player-getting-hit { animation: player-hit 0.4s ease-out forwards; }
+
+        @keyframes explosion {
+            0% { transform: scale(0.8) rotate(0deg); opacity: 1; background-color: #facc15; }
+            50% { transform: scale(1.5) rotate(15deg); opacity: 1; background-color: #ef4444; }
+            100% { transform: scale(2) rotate(45deg); opacity: 0; background-color: #7f1d1d; }
+        }
+        #enemy-sprite.exploding {
+            animation: explosion 0.5s ease-out forwards;
+            border-radius: 50% !important;
+            border: none !important;
+        }
+        
+        .terminal-input-wrapper { background-color: #000; border: 1px solid #3f3f46; padding: 8px; border-radius: 4px; }
+
+        @keyframes error-shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+        .error-shake { animation: error-shake 0.3s ease-in-out; }
+
+        .admin-tab-btn { background-color: #18181b; color: #a1a1aa; border: 2px solid #27272a; padding: 8px 16px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .admin-tab-btn.active { background-color: #27272a; color: #38bdf8; border-color: #38bdf8; }
+
+        .typing-cursor::after { content: '█'; animation: blink 1s step-end infinite; color: inherit; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .btn-arcade-icon {
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background-color: #27272a;
+            border: 1px solid #52525b;
+            border-radius: 6px;
+            box-shadow: 0 4px 0 #18181b;
+            transition: all 0.1s;
+        }
+        .btn-arcade-icon:active {
+            box-shadow: 0 0px 0 #18181b;
+            transform: translateY(4px);
+        }
+        
+        /* สไตล์สำหรับพื้นหลังโค้ดรันหน้าแรก */
+        .bg-code-line {
+            opacity: 0;
+            animation: code-fade-in-out 3s linear forwards;
+        }
+        @keyframes code-fade-in-out {
+            0% { opacity: 0; transform: translateY(10px); }
+            10% { opacity: 0.8; transform: translateY(0); }
+            90% { opacity: 0.8; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* --- 🔴 Hard Mode Transition Effects --- */
+        .hard-mode-transition {
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(15, 0, 0, 0.95),
+                rgba(15, 0, 0, 0.95) 2px,
+                rgba(40, 0, 0, 0.9) 4px,
+                rgba(40, 0, 0, 0.9) 6px
+            ) !important;
+            border-color: #991b1b !important;
+            animation: glitch-screen 0.2s infinite;
+        }
+        
+        @keyframes glitch-screen {
+            0% { filter: hue-rotate(0deg) contrast(1.2); transform: translateX(0px); }
+            25% { filter: hue-rotate(-5deg) contrast(1.5); transform: translateX(-2px); }
+            50% { filter: hue-rotate(5deg) contrast(1.1); transform: translateX(2px); }
+            75% { filter: hue-rotate(0deg) contrast(1.6); transform: translateX(-1px); }
+            100% { filter: hue-rotate(0deg) contrast(1.2); transform: translateX(0px); }
+        }
+
+        .scanline-bar {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background: rgba(239, 68, 68, 0.3);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+            opacity: 0.8;
+            animation: scan-move 2s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes scan-move {
+            0% { top: -10%; }
+            100% { top: 110%; }
+        }
+
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative bg-black">
+
+    <!-- ========================================== -->
+    <!-- 🎬 SECTION 1: SPLASH SCREEN                -->
+    <!-- ========================================== -->
+    <section id="splash-screen" class="min-h-screen w-full bg-black flex flex-col items-center justify-center transition-opacity duration-1000 opacity-100">
+        <h2 class="arcade-font text-xl md:text-3xl text-zinc-500 tracking-widest mb-4">A GAME BY</h2>
+        <h1 class="arcade-font text-4xl md:text-6xl text-red-600 animate-pulse text-shadow-lg">101 STUDIO</h1>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 🔄 SECTION 2: TRANSITION SCREEN            -->
+    <!-- ========================================== -->
+    <section id="transition-screen" class="hidden min-h-screen w-full bg-zinc-950 flex-col items-start justify-end p-8 md:p-16 transition-opacity duration-500 opacity-0 border-4 border-zinc-800 relative overflow-hidden">
+        <div id="transition-scanline" class="hidden scanline-bar"></div>
+        
+        <div class="w-full max-w-4xl mx-auto relative z-10">
+            <!-- ป้ายเตือนโหมดยาก -->
+            <div id="transition-warning" class="hidden mb-6 flex items-center animate-bounce">
+                <span class="text-5xl md:text-7xl text-red-600 arcade-font error-shake drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]">⚠️</span>
+                <div class="ml-4 flex flex-col">
+                    <span class="text-xl md:text-3xl text-red-500 arcade-font tracking-widest animate-pulse">DANGER ZONE</span>
+                    <span class="text-sm text-red-800 code-font mt-1 font-bold">LETHAL DIFFICULTY ENGAGED</span>
+                </div>
+            </div>
+            
+            <div id="transition-text" class="code-font text-green-500 text-lg md:text-2xl drop-shadow-[0_0_8px_rgba(34,197,94,0.6)] whitespace-pre-wrap leading-loose"></div>
+            <span id="transition-cursor" class="typing-cursor text-green-500 text-2xl"></span>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 🎮 SECTION 3: MAIN MENU (START SCREEN)     -->
+    <!-- ========================================== -->
+    <section id="start-screen" class="hidden min-h-screen w-full bg-black relative overflow-y-auto border-8 border-zinc-800 transition-opacity duration-500">
+        <!-- 💻 เอฟเฟกต์พื้นหลัง Code Raining -->
+        <div id="bg-code-container" class="absolute inset-0 overflow-hidden pointer-events-none p-4" style="z-index: 0; mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent);"></div>
+
+        <div class="relative z-10 flex flex-col items-center justify-center min-h-screen py-12 px-4 w-full">
+            <h1 class="arcade-font text-4xl md:text-7xl theme-text mb-4 animate-pulse text-center drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">CODE CONTRA</h1>
+            <p class="code-font text-green-400 mb-8 text-lg tracking-widest bg-zinc-900/80 px-4 py-2 border border-green-900 backdrop-blur-sm shadow-lg">THE SYNTAX WARS</p>
+            
+            <!-- 🏆 สถิติสูงสุด -->
+            <div id="max-record-display" class="hidden flex flex-col items-center bg-zinc-900/90 border border-yellow-600/50 px-8 py-4 rounded-lg shadow-[0_0_20px_rgba(202,138,4,0.3)] mb-8 transition-all backdrop-blur-sm">
+                <div class="text-4xl mb-2 animate-bounce drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]">🏆</div>
+                <div class="arcade-font text-[10px] text-yellow-500/80 mb-2 tracking-widest">HIGHEST RECORD</div>
+                <div class="code-font text-yellow-400 font-bold text-lg md:text-xl flex items-center" id="record-text"></div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-4 w-full max-w-md px-4">
+                <button onclick="startNewGame(false)" class="bg-blue-600 hover:bg-blue-500 text-white arcade-font text-sm md:text-base py-4 px-8 rounded border-b-4 border-blue-900 active:border-b-0 active:mt-1 transition-all w-full">
+                    NORMAL MODE
+                </button>
+                <button id="btn-continue" onclick="continueGame(false)" class="hidden bg-cyan-600 hover:bg-cyan-500 text-white arcade-font text-sm md:text-base py-4 px-8 rounded border-b-4 border-cyan-900 active:border-b-0 active:mt-1 transition-all shadow-[0_0_15px_rgba(37,99,235,0.5)] w-full">
+                    CONTINUE NORMAL
+                </button>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-6 w-full max-w-md px-4">
+                <button id="btn-hard-mode" onclick="promptHardMode()" class="bg-zinc-900 hover:bg-zinc-800 text-red-500 arcade-font text-sm py-3 px-6 rounded border border-zinc-700 transition-all flex items-center justify-center gap-2 w-full">
+                    <span id="hard-lock-icon">🔒</span> HARD MODE
+                </button>
+                <button id="btn-continue-hard" onclick="continueGame(true)" class="hidden bg-red-900 hover:bg-red-800 text-white arcade-font text-sm py-3 px-6 rounded border-b-4 border-red-950 active:border-b-0 active:mt-1 transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)] w-full">
+                    CONTINUE HARD
+                </button>
+            </div>
+            
+            <button onclick="toggleAdminModal()" class="text-zinc-400 hover:text-white code-font text-xs flex items-center gap-2 bg-zinc-900/80 px-4 py-2 rounded-sm border-b-4 border-zinc-700 active:border-b-0 active:mt-1 mt-4 transition-all backdrop-blur-sm">
+                <span>⚙️</span> CONFIG & CUSTOMIZE
+            </button>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 🚀 SECTION 4: CORE GAMEPLAY                -->
+    <!-- ========================================== -->
+    <section id="game-screen" class="hidden flex-col w-full min-h-screen">
+        <header class="bg-black border-b-4 theme-border p-3 md:p-4 shadow-md relative z-20">
+            <div class="max-w-6xl mx-auto flex justify-between items-center">
+                <h1 id="ui-game-title" class="arcade-font text-lg md:text-2xl theme-text tracking-widest text-shadow-sm flex items-center">
+                    CODE CONTRA <span id="ui-game-tag" class="text-[9px] md:text-[10px] theme-bg-accent text-white px-2 py-1 align-top ml-2 hidden sm:inline-block rounded-sm">TERMINAL</span>
+                </h1>
+                
+                <div class="flex items-center gap-2 md:gap-4">
+                    <div class="flex items-center gap-2 bg-red-950/30 border border-red-900/50 px-3 py-1.5 rounded-sm" title="พลังชีวิต">
+                        <span class="text-red-500 arcade-font text-[8px] md:text-[10px]">HP</span>
+                        <span id="lives-display" class="text-[10px] md:text-xs tracking-widest">❤️❤️❤️</span>
+                    </div>
+
+                    <div class="hidden md:flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-3 py-1.5 rounded-sm">
+                            <span class="arcade-font text-[10px] text-zinc-500">SCORE</span>
+                            <span id="score" class="arcade-font text-[10px] text-yellow-400">0000</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 px-3 py-1.5 rounded-sm">
+                            <span class="arcade-font text-[10px] text-zinc-500">LVL</span>
+                            <span id="level-num" class="arcade-font text-[10px] text-pink-400">1</span>
+                            <span class="arcade-font text-[10px] text-zinc-500">-</span>
+                            <span id="stage-num" class="arcade-font text-[10px] text-blue-400">1</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 ml-1 md:ml-2">
+                        <button onclick="confirmReturnHome()" class="btn-arcade-icon text-zinc-400 text-sm" title="กลับหน้าหลัก (Home)">🏠</button>
+                        <button id="btn-mute" onclick="toggleMute()" class="btn-arcade-icon text-sm" title="เปิด/ปิดเสียง">🔊</button>
+                        <button onclick="toggleAdminModal()" class="btn-arcade-icon text-yellow-500 text-sm" title="ตั้งค่า (CONFIG)">⚙️</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main id="game-main-content" class="max-w-6xl w-full mx-auto p-4 flex-grow grid grid-cols-1 md:grid-cols-[1fr,350px] gap-6 justify-center">
+            <div class="flex flex-col gap-6">
+                <div id="battle-bg-container" class="jungle-bg p-6 rounded-lg border-4 border-slate-700 shadow-2xl relative overflow-hidden h-64 flex items-end justify-between px-12 pb-6">
+                    <div class="relative flex flex-col items-center">
+                        <div id="soldier"></div>
+                        <span class="arcade-font text-[10px] text-yellow-400 mt-2 bg-black px-2 py-1 rounded">PLAYER 1</span>
+                        <div id="bullet-effect" class="bullet"></div>
+                    </div>
+
+                    <div class="relative flex flex-col items-center mb-6">
+                        <div class="w-20 h-3 bg-red-950 mb-3 border-2 border-red-500">
+                            <div id="monster-hp-bar" class="bg-red-500 h-full transition-all" style="width: 100%"></div>
+                        </div>
+                        <div id="enemy-sprite" class="shadow-lg shadow-red-500/50"></div>
+                    </div>
+                    <div id="enemy-bullet-effect" class="enemy-bullet"></div>
+                </div>
+
+                <div id="terminal-container" class="bg-slate-900 rounded-lg border-2 border-slate-700 overflow-hidden">
+                    <div class="bg-slate-800 px-4 py-2 text-xs text-slate-400 border-b border-slate-700 flex justify-between">
+                        <span class="code-font text-green-400">~/mission_control/weapon_system.py</span>
+                        <span class="font-bold text-yellow-400 arcade-font text-[10px]">PYTHON</span>
+                    </div>
+                    
+                    <div class="p-4 bg-black min-h-[200px] flex flex-col">
+                        <div id="accumulated-code" class="code-font whitespace-pre-wrap" style="color: #52525b;"></div>
+                        <div id="current-code-snippet" class="code-font whitespace-pre-wrap mt-2"></div>
+                    </div>
+                    
+                    <div class="bg-slate-950 p-4 border-t border-slate-700">
+                        <div class="terminal-input-wrapper flex gap-2 items-center">
+                            <span class="text-green-500 font-bold">></span>
+                            <input type="text" id="command-input" class="bg-transparent border-none outline-none w-full code-font font-bold text-lg" style="color: var(--terminal-text-color);" placeholder="[ พิมพ์คำตอบที่นี่และกด Enter ]" autocomplete="off">
+                            <button onclick="executeCommand()" class="theme-bg-accent hover:opacity-90 text-white arcade-font text-[10px] px-4 py-2 rounded-sm border-b-2 border-black/40 active:border-b-0 active:mt-[2px] transition-all">
+                                EXECUTE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-6">
+                <div class="bg-zinc-900 p-5 rounded-lg border-l-4 border-blue-500 shadow-lg relative flex gap-4">
+                    <div class="flex-shrink-0">
+                        <div class="w-12 h-12 bg-blue-900 rounded border-2 border-blue-400 flex items-center justify-center">
+                            <span class="text-2xl">📻</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="arcade-font text-[10px] text-blue-400 mb-2">HQ COMMS LINK</h3>
+                        <p id="helper-text" class="text-zinc-300 text-sm leading-relaxed font-bold">
+                            ทหาร! สังเกตคีย์เวิร์ดด้านล่างให้ดี แล้วพิมพ์โค้ดลงในช่องว่างด้วยตัวเอง!
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-zinc-900 p-5 rounded-lg border-2 border-zinc-800 shadow-lg">
+                    <h3 id="monster-name" class="arcade-font text-xs theme-text mb-3 text-shadow leading-loose">กำลังประมวลผล...</h3>
+                    
+                    <p id="quest-desc" class="text-zinc-300 font-bold text-sm mb-4 min-h-[48px]"></p>
+                    
+                    <div class="bg-black p-3 border border-zinc-700 text-xs text-green-400 code-font mb-4">
+                        <span class="text-zinc-500">INTEL:</span> <span id="hint-text">กำลังค้นหา...</span>
+                    </div>
+
+                    <span class="arcade-font text-[10px] text-slate-500 block mb-2">AVAILABLE KEYWORDS:</span>
+                    <div id="choices-container" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 🛠️ SECTION 5: MODALS & OVERLAYS            -->
+    <!-- ========================================== -->
+    <section id="modals-container">
+        <!-- HARD MODE MODAL -->
+        <div id="hard-mode-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center transition-all duration-300 border-8 border-red-900">
+            <h2 class="arcade-font text-4xl md:text-6xl text-red-600 mb-4 error-shake text-center">HARD MODE</h2>
+            <p class="code-font text-zinc-300 text-base md:text-lg text-center mb-8 max-w-2xl px-4 leading-loose">
+                ⚠️ โหมดนี้ออกแบบมาเพื่อโปรแกรมเมอร์ตัวจริง!<br>
+                <span class="text-red-400">1. จะไม่มีคำใบ้ (INTEL) และไม่มีคำอธิบายใดๆ<br>
+                2. ต้องพิมพ์คำตอบด้วยตัวเอง 100% เอาตัวรอดเอง!</span><br><br>
+                <span id="hard-lock-msg" class="text-yellow-500 font-bold">🔒 คุณยังเล่นโหมดปกติไม่จบ! แนะนำให้เคลียร์โหมดปกติก่อนเพื่อปลดล็อกอย่างเป็นทางการ</span>
+            </p>
+            <div class="flex flex-col gap-4 w-full max-w-md px-4">
+                <button id="btn-force-hard" onclick="startNewGame(true)" class="bg-red-700 hover:bg-red-600 text-white arcade-font text-sm py-4 px-8 rounded border-b-4 border-red-900 active:border-b-0 active:mt-1 transition-all w-full">
+                    ฝืนเข้าโหมดยาก (ENTER ANYWAY)
+                </button>
+                <button onclick="document.getElementById('hard-mode-modal').classList.add('hidden')" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 arcade-font text-sm py-4 px-8 rounded border-b-4 border-zinc-900 active:border-b-0 active:mt-1 transition-all w-full">
+                    กลับไปโหมดปกติ
+                </button>
+            </div>
+        </div>
+
+        <!-- LEVEL UP MODAL -->
+        <div id="level-up-screen" class="hidden fixed inset-0 bg-black/90 z-40 flex flex-col items-center justify-center transition-all duration-300">
+            <h2 id="level-title" class="arcade-font text-4xl md:text-6xl text-yellow-400 mb-4 animate-bounce text-center">LEVEL UP!</h2>
+            <p id="level-desc" class="code-font text-green-400 text-lg md:text-xl text-center">SYSTEM UPGRADED. READY FOR NEXT WAVE.</p>
+        </div>
+
+        <!-- GAME OVER MODAL -->
+        <div id="game-over-screen" class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center transition-all duration-300 border-8 border-red-900">
+            <h2 class="arcade-font text-5xl md:text-7xl text-red-600 mb-4 error-shake text-center">GAME OVER</h2>
+            <p class="code-font text-zinc-400 text-lg md:text-xl text-center mb-8">SYSTEM CRITICAL FAILURE.</p>
+            
+            <div class="bg-zinc-950/90 border border-zinc-800 p-8 rounded-lg max-w-2xl w-full mx-4 mb-10 shadow-[0_10px_30px_rgba(0,0,0,0.8)] relative">
+                <div class="absolute -top-2 left-4 text-7xl text-zinc-800 font-serif opacity-40 leading-none">"</div>
+                <div class="relative z-10 px-4 md:px-8">
+                    <p id="quote-en" class="book-font italic text-blue-300 text-lg md:text-xl mb-3 leading-relaxed text-center"></p>
+                    <p id="quote-th" class="font-sans font-light text-zinc-400 text-sm md:text-base leading-relaxed text-center mb-6"></p>
+                    <div class="flex items-center justify-center gap-4">
+                        <div class="h-px bg-zinc-700/50 flex-grow"></div>
+                        <p id="quote-author" class="code-font text-yellow-500/80 text-xs md:text-sm tracking-widest uppercase"></p>
+                        <div class="h-px bg-zinc-700/50 flex-grow"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4">
+                <button id="btn-respawn" onclick="respawnLevel()" class="bg-zinc-800 text-zinc-500 arcade-font text-lg md:text-xl py-4 px-8 rounded border-b-4 border-zinc-900 transition-all cursor-not-allowed" disabled>
+                    RESPAWN IN 3...
+                </button>
+                <button onclick="returnToMainMenu()" class="bg-transparent hover:bg-zinc-900 text-zinc-400 arcade-font text-sm py-4 px-8 rounded border border-zinc-700 transition-all">
+                    RETURN TO MAIN MENU
+                </button>
+            </div>
+        </div>
+
+        <!-- HQ CONTROLS MODAL -->
+        <div id="admin-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-zinc-950 w-full max-w-5xl rounded-lg border-2 border-zinc-700 flex flex-col max-h-[90vh]">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-zinc-800 gap-4">
+                    <div class="flex gap-2">
+                        <button id="btn-tab-quests" onclick="switchAdminTab('quests')" class="admin-tab-btn active arcade-font text-[10px]">📝 จัดการโจทย์ (JSON)</button>
+                        <button id="btn-tab-ui" onclick="switchAdminTab('ui')" class="admin-tab-btn arcade-font text-[10px]">🎨 ปรับแต่งหน้าจอ & UI</button>
+                    </div>
+                    <button onclick="toggleAdminModal()" class="text-zinc-500 hover:text-white font-bold text-xl align-middle self-end sm:self-auto">&times;</button>
+                </div>
+                
+                <div id="tab-content-quests" class="p-4 flex-grow overflow-auto flex flex-col gap-2">
+                    <div class="bg-zinc-900 p-3 rounded text-xs text-zinc-400 border border-zinc-800">
+                        <strong>คำเตือนระบบ:</strong> แก้ไขข้อมูลชุดด่านในรูปแบบ JSON โครงสร้างข้อมูลห้ามขาดเครื่องหมายปีกกา
+                    </div>
+                    <div id="admin-error" class="hidden bg-red-900 text-red-200 p-2 rounded text-sm font-bold animate-pulse"></div>
+                    <textarea id="json-editor" class="w-full h-full min-h-[350px] bg-black text-green-400 p-4 rounded border border-slate-700 focus:border-blue-500 outline-none resize-none code-font" spellcheck="false"></textarea>
+                </div>
+
+                <div id="tab-content-ui" class="hidden p-6 flex-grow overflow-auto flex flex-col gap-6">
+                    <div class="bg-zinc-900 p-3 rounded text-xs text-blue-300 border border-blue-900/50 arcade-font leading-relaxed">
+                        ⚙️ UI & GRAPHICS CONFIGURATION PANEL
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-zinc-900/50 p-4 rounded border border-zinc-800 flex flex-col gap-4">
+                            <h4 class="text-sm font-bold text-zinc-300 arcade-font text-[11px] text-blue-400">📝 TEXT SETTINGS</h4>
+                            <div>
+                                <label class="block text-xs text-zinc-400 font-bold mb-2">หัวข้อหลักของเกม (Game Title)</label>
+                                <input type="text" id="cfg-game-title" class="w-full bg-black border border-zinc-700 p-2 text-sm text-white rounded outline-none focus:border-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-zinc-400 font-bold mb-2">ป้ายแท็กของเกม (Game Mode Tag)</label>
+                                <input type="text" id="cfg-game-tag" class="w-full bg-black border border-zinc-700 p-2 text-sm text-white rounded outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-900/50 p-4 rounded border border-zinc-800 flex flex-col gap-4">
+                            <h4 class="text-sm font-bold text-zinc-300 arcade-font text-[11px] text-yellow-500">🎨 THEME ACCENT COLOR</h4>
+                            <div>
+                                <label class="block text-xs text-zinc-400 font-bold mb-2">เลือกชุดสีอินเตอร์เฟสหลัก</label>
+                                <select id="cfg-accent-color" class="w-full bg-black border border-zinc-700 p-2 text-sm text-white rounded outline-none focus:border-blue-500">
+                                    <option value="red">🔴 Neon Red (ดั้งเดิม)</option>
+                                    <option value="green">🟢 Matrix Green (สีเขียวเหลล็ก)</option>
+                                    <option value="cyan">🔵 Cyber Cyan (ฟ้านีออน)</option>
+                                    <option value="gold">🟡 Retro Gold (ทองอาเขต)</option>
+                                    <option value="purple">🟣 Vaporwave Purple (ม่วงมืด)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-zinc-400 font-bold mb-2">ธีมกราฟิกของฉากหลังสนามรบ</label>
+                                <select id="cfg-bg-theme" class="w-full bg-black border border-zinc-700 p-2 text-sm text-white rounded outline-none focus:border-blue-500">
+                                    <option value="jungle">🌴 Classic Jungle (เขียวป่าชื้น)</option>
+                                    <option value="cyber">🌌 Vaporwave Space (ม่วงมิติไซเบอร์)</option>
+                                    <option value="toxic">☣️ Toxic Wasteland (ส้มสารพิษกัมมันตรังสี)</option>
+                                    <option value="deepspace">🚀 Deep Space (น้ำเงินดำอวกาศลึก)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-zinc-900/50 p-4 rounded border border-zinc-800 flex flex-col gap-4 md:col-span-2">
+                            <h4 class="text-sm font-bold text-zinc-300 arcade-font text-[11px] text-pink-400">👾 CUSTOM SPRITES (เปลี่ยนรูปภาพ)</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-zinc-400 font-bold mb-2">รูปตัวละครผู้เล่น (Player Avatar)</label>
+                                    <input type="file" id="avatar-upload" accept="image/*" class="hidden" onchange="handleAvatarUpload(event)">
+                                    <button onclick="document.getElementById('avatar-upload').click()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-green-400 p-2 rounded border border-zinc-600 transition-all text-sm font-bold">
+                                        👕 เลือกรูปผู้เล่นใหม่
+                                    </button>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-zinc-400 font-bold mb-2">รูปศัตรู/บอส (Enemy Sprite)</label>
+                                    <input type="file" id="enemy-upload" accept="image/*" class="hidden" onchange="handleEnemyUpload(event)">
+                                    <button onclick="document.getElementById('enemy-upload').click()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-red-400 p-2 rounded border border-zinc-600 transition-all text-sm font-bold">
+                                        👾 เลือกรูปศัตรูใหม่
+                                    </button>
+                                    <button onclick="resetEnemyImage()" class="w-full mt-2 bg-red-950 hover:bg-red-900 text-red-400 p-1.5 rounded border border-red-800 transition-all text-xs">
+                                        รีเซ็ตศัตรูเป็นค่าเริ่มต้น
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-900/50 p-4 rounded border border-zinc-800 flex flex-col gap-4 md:col-span-2">
+                            <h4 class="text-sm font-bold text-zinc-300 arcade-font text-[11px] text-green-400">💻 TERMINAL SCREEN OPTIONS</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-zinc-400 font-bold mb-2">สีของตัวอักษรพิมพ์ใน Terminal</label>
+                                    <select id="cfg-term-color" class="w-full bg-black border border-zinc-700 p-2 text-sm text-white rounded outline-none focus:border-blue-500">
+                                        <option value="#4ade80">เขียวนีออน (Standard Green)</option>
+                                        <option value="#22d3ee">ฟ้าไซเบอร์ (Neon Cyan)</option>
+                                        <option value="#fbbf24">เหลืองอำพัน (Amber Matrix)</option>
+                                        <option value="#ffffff">ขาวบริสุทธิ์ (Pure White)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-zinc-400 font-bold mb-2">ขนาดฟอนต์ภายในช่อง Terminal</label>
+                                    <select id="cfg-term-size" class="w-full bg-black border border-zinc-700 p-2 text-sm text-white rounded outline-none focus:border-blue-500">
+                                        <option value="14px">เล็ก (14px)</option>
+                                        <option value="16px">ปานกลาง (16px - มาตรฐาน)</option>
+                                        <option value="18px">ใหญ่ (18px)</option>
+                                        <option value="20px">ใหญ่พิเศษ (20px)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-zinc-800 flex gap-4 justify-end">
+                    <button onclick="resetToDefaultData()" class="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded border border-zinc-600 text-sm font-bold">
+                        รีเซ็ตเป็นค่าเริ่มต้น
+                    </button>
+                    <button onclick="saveAllConfigData()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded border-b-2 border-blue-800 active:border-b-0 active:mt-[2px] transition-all">
+                        บันทึกระบบ & รีสตาร์ทเกม
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 🧠 GAME LOGIC & SCRIPTS                    -->
+    <!-- ========================================== -->
+    <script>
+        // ==========================================
+        // 0. WEB AUDIO API SYNTHESIZER
+        // ==========================================
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let isMuted = false;
+
+        function playTone(freq, type, duration, vol=0.1) {
+            if(isMuted) return;
+            if(!audioCtx) audioCtx = new AudioContext();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function soundClick() { playTone(600, 'sine', 0.1, 0.05); }
+        function soundType() { playTone(800, 'triangle', 0.05, 0.02); }
+        function soundError() { playTone(150, 'sawtooth', 0.3, 0.1); }
+        
+        function soundShoot() {
+            if(isMuted) return; if(!audioCtx) audioCtx = new AudioContext(); if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function soundEnemyShoot() {
+            if(isMuted) return; if(!audioCtx) audioCtx = new AudioContext(); if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.2); 
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        function soundPlayerHit() {
+            if(isMuted) return; if(!audioCtx) audioCtx = new AudioContext(); if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3); 
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function soundExplosion() {
+            if(isMuted) return; if(!audioCtx) audioCtx = new AudioContext(); if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5); 
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function soundLevelUp() {
+            if(isMuted) return;
+            setTimeout(() => playTone(440, 'square', 0.2, 0.1), 0);
+            setTimeout(() => playTone(554, 'square', 0.2, 0.1), 150);
+            setTimeout(() => playTone(659, 'square', 0.4, 0.1), 300);
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.querySelectorAll('#btn-mute').forEach(btn => btn.innerText = isMuted ? '🔇' : '🔊');
+            if(!isMuted) soundClick();
+        }
+
+        document.addEventListener('click', (e) => {
+            if(!audioCtx) audioCtx = new AudioContext();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const target = e.target.closest('button');
+            if (target && target.id !== 'btn-mute') { soundClick(); }
+        });
+
+        // ==========================================
+        // BACKGROUND CODE ANIMATION (Matrix Style)
+        // ==========================================
+        let bgCodeInterval = null;
+        const bgCodeLines = [
+            "import os, sys", "def initialize_system():", "    sys_status = True", "    load_modules('core')", "    return sys_status",
+            "class WeaponSystem:", "    def __init__(self):", "        self.ammo = 500", "    def fire(self, target):", "        target.hp -= 50",
+            "while target_locked:", "    fire_laser()", "    if enemy.hp <= 0:", "        break", "try:", "    execute_override()",
+            "except SecurityError:", "    reboot_sequence()", "data = fetch_intel(stage=current)", "render_ui(data)",
+            "print('SYSTEM OVERRIDE INITIATED...')", "for i in range(10):", "    analyze_threat_level()", "if __name__ == '__main__':", "    main()"
+        ];
+
+        function startBgCodeAnimation() {
+            const container = document.getElementById('bg-code-container');
+            if(!container) return;
+            if(bgCodeInterval) clearInterval(bgCodeInterval);
+
+            bgCodeInterval = setInterval(() => {
+                const line = document.createElement('div');
+                // เพิ่มคลาส 'absolute' และปรับสีให้สว่างขึ้นนิดหน่อยเพื่อให้โค้ดกระจายอิสระ
+                line.className = 'bg-code-line whitespace-pre absolute text-green-500/40 code-font font-bold';
+                line.textContent = bgCodeLines[Math.floor(Math.random() * bgCodeLines.length)];
+
+                // 1. สุ่มตำแหน่งซ้าย-ขวา (0% ถึง 85%) และ บน-ล่าง (0% ถึง 90%) ให้เต็มหน้าจอ
+                line.style.left = Math.floor(Math.random() * 85) + '%';
+                line.style.top = Math.floor(Math.random() * 90) + '%';
+
+                // 2. สุ่มขนาดฟอนต์เพื่อสร้างมิติภาพ (บางบรรทัดใหญ่ บางบรรทัดเล็ก เหมือนอยู่ใกล้-ไกล)
+                const fontSizes = ['10px', '12px', '14px', '18px'];
+                line.style.fontSize = fontSizes[Math.floor(Math.random() * fontSizes.length)];
+
+                container.appendChild(line);
+
+                // 3. เพิ่มจำนวนบรรทัดที่แสดงพร้อมกันบนจอจาก 15 เป็น 50 บรรทัด
+                if (container.childNodes.length > 50) {
+                    container.removeChild(container.firstChild);
+                }
+            }, 120); // 4. ดรอปเวลาจาก 400ms เป็น 120ms (สุ่มโค้ดขึ้นมาเร็วขึ้น)
+        }
+
+        function stopBgCodeAnimation() {
+            if(bgCodeInterval) clearInterval(bgCodeInterval);
+        }
+
+        // ==========================================
+        // 1. BACKEND INTEGRATION 
+        // ==========================================
+        async function sendScoreToBackend(finalScore) {
+            try {
+                const backendUrl = "save-score.php"; 
+                const payload = { score: finalScore, completed_at: new Date().toISOString() };
+                await fetch(backendUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            } catch (error) { console.error("HQ Error", error); }
+        }
+
+        // ==========================================
+        // 2. AVATAR, ENEMY & UI SYSTEM
+        // ==========================================
+        let currentCustomAvatar = null;
+        let currentCustomEnemy = null;
+        let typingTimeout = null; 
+        let isHardMode = false;
+
+        const defaultUiConfig = {
+            gameTitle: "CODE CONTRA", gameTag: "TERMINAL", accentColor: "red", bgTheme: "jungle", terminalTextColor: "#4ade80", terminalFontSize: "16px"
+        };
+        let currentUiConfig = { ...defaultUiConfig };
+
+        function loadSavedAvatar() {
+            const savedAvatar = localStorage.getItem('customContraAvatar');
+            if (savedAvatar) { currentCustomAvatar = savedAvatar; document.getElementById('soldier').style.backgroundImage = `url(${savedAvatar})`; }
+        }
+
+        function loadSavedEnemy() {
+            const savedEnemy = localStorage.getItem('customContraEnemy');
+            if (savedEnemy) { currentCustomEnemy = savedEnemy; applyEnemyImage(savedEnemy); }
+        }
+
+        function applyEnemyImage(dataUrl) {
+            const enemySprite = document.getElementById('enemy-sprite');
+            enemySprite.style.background = `url(${dataUrl})`;
+            enemySprite.style.backgroundSize = 'contain';
+            enemySprite.style.backgroundPosition = 'center';
+            enemySprite.style.backgroundRepeat = 'no-repeat';
+            enemySprite.style.backgroundColor = 'transparent';
+            enemySprite.style.border = 'none';
+        }
+
+        function resetEnemyImage() {
+            localStorage.removeItem('customContraEnemy'); currentCustomEnemy = null; document.getElementById('enemy-sprite').style = ''; alert('รีเซ็ตรูปศัตรูเป็นค่าเริ่มต้นแล้ว');
+        }
+
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert("รูปภาพใหญ่เกินไปครับ (จำกัดไม่เกิน 2MB)"); event.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const scaleSize = 200 / img.width;
+                    canvas.width = 200; canvas.height = img.height * scaleSize;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    try {
+                        const b64 = canvas.toDataURL('image/png');
+                        localStorage.setItem('customContraAvatar', b64); currentCustomAvatar = b64; document.getElementById('soldier').style.backgroundImage = `url(${b64})`; alert("เปลี่ยนรูปสำเร็จ!");
+                    } catch (err) { alert("Storage เต็ม!"); }
+                }; img.src = e.target.result;
+            }; reader.readAsDataURL(file);
+        }
+
+        function handleEnemyUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) { alert("รูปศัตรูใหญ่เกินไปครับ (จำกัดไม่เกิน 2MB)"); event.target.value = ''; return; }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const scaleSize = 150 / img.width;
+                    canvas.width = 150; canvas.height = img.height * scaleSize;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    try {
+                        const b64 = canvas.toDataURL('image/png');
+                        localStorage.setItem('customContraEnemy', b64); currentCustomEnemy = b64; applyEnemyImage(b64); alert("เปลี่ยนรูปศัตรูสำเร็จ!");
+                    } catch (err) { alert("Storage เต็ม!"); }
+                }; img.src = e.target.result;
+            }; reader.readAsDataURL(file);
+        }
+
+        function initUiConfig() {
+            const savedUi = localStorage.getItem('contraUiConfig');
+            if (savedUi) { try { currentUiConfig = JSON.parse(savedUi); } catch(e) { currentUiConfig = { ...defaultUiConfig }; } }
+            applyUiStyles(currentUiConfig);
+        }
+
+        function applyUiStyles(config) {
+            document.getElementById("ui-game-title").innerHTML = `${config.gameTitle} <span id="ui-game-tag" class="text-[9px] md:text-[10px] theme-bg-accent text-white px-2 py-1 align-top ml-2 hidden sm:inline-block rounded-sm">${config.gameTag}</span>`;
+            const root = document.documentElement;
+            if (config.accentColor === "green") { root.style.setProperty('--accent-color', '#22c55e'); root.style.setProperty('--accent-border', '#15803d'); }
+            else if (config.accentColor === "cyan") { root.style.setProperty('--accent-color', '#06b6d4'); root.style.setProperty('--accent-border', '#0e7490'); }
+            else if (config.accentColor === "gold") { root.style.setProperty('--accent-color', '#eab308'); root.style.setProperty('--accent-border', '#a16207'); }
+            else if (config.accentColor === "purple") { root.style.setProperty('--accent-color', '#a855f7'); root.style.setProperty('--accent-border', '#7e22ce'); }
+            else { root.style.setProperty('--accent-color', '#ef4444'); root.style.setProperty('--accent-border', '#b91c1c'); }
+            window.currentBgTheme = config.bgTheme;
+            if (config.bgTheme === "cyber") { root.style.setProperty('--bg-grad-start', '#1e1b4b'); root.style.setProperty('--bg-grad-end', '#701a75'); }
+            else if (config.bgTheme === "toxic") { root.style.setProperty('--bg-grad-start', '#1c1917'); root.style.setProperty('--bg-grad-end', '#422006'); }
+            else if (config.bgTheme === "deepspace") { root.style.setProperty('--bg-grad-start', '#020617'); root.style.setProperty('--bg-grad-end', '#0f172a'); }
+            else { root.style.setProperty('--bg-grad-start', '#0f172a'); root.style.setProperty('--bg-grad-end', '#064e3b'); }
+            root.style.setProperty('--terminal-text-color', config.terminalTextColor); root.style.setProperty('--terminal-font-size', config.terminalFontSize);
+            document.getElementById("accumulated-code").style.fontSize = config.terminalFontSize; document.getElementById("current-code-snippet").style.fontSize = config.terminalFontSize; document.getElementById("accumulated-code").style.color = config.terminalTextColor;
+        }
+
+        // ==========================================
+        // 3. CORE GAME DATA & SAVE SYSTEM
+        // ==========================================
+        const defaultQuests = [
+            {
+                "monster": "เอเลี่ยนลูกสมุน (STAGE 1 - ล็อกระบบ)",
+                "desc": "ภารกิจ: ประกาศสถานะระบบอาวุธให้พร้อมใช้งานด้วย Boolean",
+                "hint": "ใน Python ค่าตรรกะความจริงคือ True (ต้องพิมพ์ใหญ่เสมอ)",
+                "code": "# 1. Initialize Weapon System\nweapon_ready = [ ___ ]",
+                "choices": ["True", "true", "Yes", "1"],
+                "answer": "True",
+                "points": 1000,
+                "explanations": { "True": "✅ ถูกต้อง! ในไพธอนต้องใช้ T พิมพ์ใหญ่", "true": "❌ เกือบแล้วทหาร! Python ตัว t ห้ามพิมพ์เล็ก!" }
+            },
+            {
+                "monster": "เอเลี่ยนลูกสมุน (STAGE 1 - บรรจุกระสุน)",
+                "desc": "ภารกิจ: กำหนดจำนวนกระสุนปืนเลเซอร์เริ่มต้นเป็นจำนวนเต็ม 500 นัด",
+                "hint": "การกำหนดตัวเลขจำนวนเต็ม (Integer) ใน Python ไม่ต้องใส่เครื่องหมายคำพูด",
+                "code": "# 2. Ammo Reload\nlaser_ammo = [ ___ ]",
+                "choices": ["500", "\"500\"", "five_hundred", "500.0"],
+                "answer": "500",
+                "points": 1000,
+                "explanations": { "500": "✅ ยอดเยี่ยม! ประกาศตัวเลขจำนวนเต็มได้ถูกต้อง" }
+            },
+            {
+                "monster": "เอเลี่ยนลูกสมุน (STAGE 1 - ตั้งชื่อรหัส)",
+                "desc": "ภารกิจ: ตั้งชื่อรหัสลับของปฏิบัติการนี้ว่า 'Omega'",
+                "hint": "ข้อมูลประเภทข้อความ (String) ต้องคร่อมด้วยเครื่องหมายอัญประกาศ",
+                "code": "# 3. Mission Code Name\nmission_name = [ ___ ]",
+                "choices": ["'Omega'", "Omega", "(Omega)", "str.Omega"],
+                "answer": "'Omega'",
+                "points": 1000,
+                "explanations": { "'Omega'": "✅ ล็อกเป้าสำเร็จ! ข้อความต้องอยู่คู่กับเครื่องหมายคำพูดเสมอ" }
+            },
+            {
+                "monster": "เอเลี่ยนลูกสมุน (STAGE 1 - พลางตัว)",
+                "desc": "ภารกิจ: ใส่เครื่องหมายเพื่อทำให้บรรทัดนี้กลายเป็นคำอธิบายโค้ด (Comment) คอมพิวเตอร์จะได้ข้ามไป",
+                "hint": "เครื่องหมายใดใช้เขียน Comment บรรทัดเดียวใน Python?",
+                "code": "[ ___ ] บรรทัดนี้คือคำอธิบายห้ามประมวลผล\nplayer_speed = 10",
+                "choices": ["#", "//", "/*", "--"],
+                "answer": "#",
+                "points": 1000,
+                "explanations": { "#": "✅ ถูกต้อง! # ใช้คอมเมนต์ใน Python" }
+            },
+            {
+                "monster": "เอเลี่ยนลาดตระเวน (STAGE 1 - แปลงค่าความเร็ว)",
+                "desc": "ภารกิจ: แปลงข้อความความเร็วให้เป็นตัวเลขทศนิยม (Float) เพื่อคำนวณวงโคจรยิง",
+                "hint": "ฟังก์ชันที่ใช้แปลงข้อมูลเป็นทศนิยมคือ float()",
+                "code": "# 5. Convert Speed to Float\nraw_speed = '79.5'\nfinal_speed = [ ___ ](raw_speed)",
+                "choices": ["float", "int", "str", "convert"],
+                "answer": "float",
+                "points": 1200,
+                "explanations": { "float": "✅ เฉียบคม! แปลงข้อความให้กลายเป็นเลขทศนิยมสำเร็จ" }
+            },
+            {
+                "monster": "เอเลี่ยนลาดตระเวน (STAGE 1 - นับจำนวนศัตรู)",
+                "desc": "ภารกิจ: นับจำนวนตัวอักษรของรหัสศัตรูเพื่อหาตำแหน่งเป้าหมาย",
+                "hint": "ฟังก์ชันที่ใช้หาความยาวหรือนับจำนวนสมาชิกใน Python คือ len()",
+                "code": "# 6. Count Enemy Target Characters\nenemy_id = 'ALIEN_999X'\nid_length = [ ___ ](enemy_id)",
+                "choices": ["len", "length", "count", "size"],
+                "answer": "len",
+                "points": 1200,
+                "explanations": { "len": "✅ ยอดเยี่ยม! ย่อมาจาก Length ใช้งานสั้นกระชับ" }
+            },
+            {
+                "monster": "เอเลี่ยนลาดตระเวน (STAGE 1 - ตรวจสอบสายพันธุ์)",
+                "desc": "ภารกิจ: ตรวจสอบประเภทข้อมูล (Data Type) ของตัวแปรอาวุธ",
+                "hint": "ฟังก์ชันตรวจสอบชนิดข้อมูลคือ type()",
+                "code": "# 7. Check Data Type\nweapon_power = 99.9\nprint([ ___ ](weapon_power))",
+                "choices": ["type", "kind", "check", "class"],
+                "answer": "type",
+                "points": 1200,
+                "explanations": { "type": "✅ ยอดเยี่ยม! คำสั่ง `type()` จะแสดงคลาสของตัวแปร" }
+            },
+            {
+                "monster": "หน่วยแฮกเกอร์เอเลี่ยน (STAGE 1 - คำนวณเศษพลังงาน)",
+                "desc": "ภารกิจ: หา 'เศษที่เหลือจากการหาร' พลังงานปืนใหญ่เลเซอร์ เพื่อเช็คพลังงานรั่วไหล",
+                "hint": "ตัวดำเนินการที่ใช้หาเศษจากการหาร (Modulo) คือเครื่องหมาย %",
+                "code": "# 8. Find Remainder of Energy\nenergy = 25\ncells = 4\nleakage = energy [ ___ ] cells",
+                "choices": ["%", "/", "//", "mod"],
+                "answer": "%",
+                "points": 1500,
+                "explanations": { "%": "✅ โจมตีโดน! เครื่องหมาย % ดึงเศษออกมาได้แม่นยำ" }
+            },
+            {
+                "monster": "หน่วยแฮกเกอร์เอเลี่ยน (STAGE 1 - พลังทำลายทวีคูณ)",
+                "desc": "ภารกิจ: คำนวณพลังโจมตีแบบยกกำลัง (2 ยกกำลัง 10)",
+                "hint": "เครื่องหมายยกกำลังใน Python คือเครื่องหมายดอกจันสองตัว (**)",
+                "code": "# 9. Power Exponential\nbase_damage = 2\nboost_level = 10\ntotal_damage = base_damage [ ___ ] boost_level",
+                "choices": ["**", "^", "*", "pow"],
+                "answer": "**",
+                "points": 1500,
+                "explanations": { "**": "✅ ดาเมจทะลุพิกัด! ** คือตัวดำเนินการยกกำลังใน Python" }
+            },
+            {
+                "monster": "หน่วยแฮกเกอร์เอเลี่ยน (STAGE 1 - แบ่งกองกำลัง)",
+                "desc": "ภารกิจ: หารจำนวนทหารเอาเฉพาะส่วนที่เป็นจำนวนเต็ม (ไม่เอาเศษหรือทศนิยม)",
+                "hint": "ตัวดำเนินการหารปัดเศษทิ้ง (Floor Division) คือเครื่องหมาย //",
+                "code": "# 10. Floor Division\nsoldiers = 105\nsquads = 10\nsoldiers_per_squad = soldiers [ ___ ] squads",
+                "choices": ["//", "/", "%", "div"],
+                "answer": "//",
+                "points": 1500,
+                "explanations": { "//": "✅ เคลียร์สเตจ! 105 // 10 จะได้ 10 ถ้วน ปัดทศนิยมทิ้งเรียบร้อย" }
+            },
+            {
+                "monster": "ป้อมปืนใหญ่ข้าศึก (STAGE 2 - ล็อกเงื่อนไข)",
+                "desc": "ภารกิจ: เขียนเงื่อนไขตรวจสอบ ถ้าหากระบบล็อคเป้าแล้ว ให้เปิดฉากยิง",
+                "hint": "คีย์เวิร์ดเริ่มเงื่อนไข 'ถ้า...' ในไพธอนคือ if",
+                "code": "# 11. Core Condition\ntarget_locked = True\n[ ___ ] target_locked:\n    print('FIRE!!')",
+                "choices": ["if", "when", "where", "check"],
+                "answer": "if",
+                "points": 2000,
+                "explanations": { "if": "✅ ยอดเยี่ยม! `if` คือคำสั่งสร้างเงื่อนไขพื้นฐาน" }
+            },
+            {
+                "monster": "ป้อมปืนใหญ่ข้าศึก (STAGE 2 - แผนสำรอง)",
+                "desc": "ภารกิจ: เติมเงื่อนไข 'มิฉะนั้น...' หากเงื่อนไขแรกไม่เป็นจริงให้ล่าถอย",
+                "hint": "คำสั่งที่จะทำงานเมื่อ `if` ด้านบนเป็นเท็จทั้งหมดคือ else:",
+                "code": "# 12. Backup Plan\nif shield_energy > 20:\n    print('Charge!')\n[ ___ ]\n    print('Retreat!')",
+                "choices": ["else:", "else", "elif", "otherwise:"],
+                "answer": "else:",
+                "points": 2000,
+                "explanations": { "else:": "✅ ล็อกเป้าสมบูรณ์! ต้องมีเครื่องหมายโคลอน (:) ปิดท้ายด้วยเสมอ" }
+            },
+            {
+                "monster": "ป้อมปืนใหญ่ข้าศึก (STAGE 2 - ทางเลือกที่สาม)",
+                "desc": "ภารกิจ: เติมคำสั่งเช็คเงื่อนไขย่อยข้อที่สอง 'หรือถ้าหากว่า...'",
+                "hint": "ใน Python จะย่อคำว่า Else If เป็นคำว่า elif",
+                "code": "# 13. Alternative Condition\nif score >= 9000:\n    rank = 'S'\n[ ___ ] score >= 5000:\n    rank = 'A'",
+                "choices": ["elif", "elseif", "else if", "if else"],
+                "answer": "elif",
+                "points": 2200,
+                "explanations": { "elif": "✅ ถูกต้อง! Python ออกแบบมาให้เขียนสั้นๆ ว่า `elif`" }
+            },
+            {
+                "monster": "ป้อมปืนใหญ่ข้าศึก (STAGE 2 - ตรวจสอบคู่ขนาน)",
+                "desc": "ภารกิจ: เชื่อมเงื่อนไขเพื่อให้ทำงานเมื่อ 'เงื่อนไขทั้งสองข้อต้องเป็นจริงพร้อมกัน'",
+                "hint": "ตัวดำเนินการตรรกศาสตร์ 'และ' ใน Python คือคำว่า and",
+                "code": "# 14. Logical AND\nif has_key == True [ ___ ] door_unlocked == False:\n    print('Open Command Socket')",
+                "choices": ["and", "&&", "AND", "&"],
+                "answer": "and",
+                "points": 2200,
+                "explanations": { "and": "✅ โดนเต็มๆ! Python ใช้คำภาษาอังกฤษตรงๆ และเป็นตัวพิมพ์เล็ก" }
+            },
+            {
+                "monster": "หุ่นยนต์พิทักษ์ (STAGE 2 - ทางเลือกคู่ขนาน)",
+                "desc": "ภารกิจ: เชื่อมเงื่อนไขเพื่อให้ทำงานเมื่อ 'ขอแค่เงื่อนไขใดเงื่อนไขหนึ่งเป็นจริงก็พอ'",
+                "hint": "ตัวดำเนินการตรรกศาสตร์ 'หรือ' ใน Python คือคำว่า or",
+                "code": "# 15. Logical OR\nif day == 'Saturday' [ ___ ] day == 'Sunday':\n    status = 'HQ_CLOSED'",
+                "choices": ["or", "||", "OR", "|"],
+                "answer": "or",
+                "points": 2500,
+                "explanations": { "or": "✅ เฉียบคม! คำสั่ง `or` ช่วยให้เงื่อนไขยืดหยุ่นขึ้น" }
+            },
+            {
+                "monster": "หุ่นยนต์พิทักษ์ (STAGE 2 - กลับค่าความจริง)",
+                "desc": "ภารกิจ: กลับค่าความจริงจากเท็จให้เป็นจริง เพื่อเจาะระบบป้องกัน",
+                "hint": "ตัวดำเนินการกลับค่าตรรกะ (Not) ใน Python คือคำว่า not",
+                "code": "# 16. Logical NOT\nis_compromised = False\nif [ ___ ] is_compromised:\n    print('System is safe.')",
+                "choices": ["not", "!", "NOT", "inverse"],
+                "answer": "not",
+                "points": 2500,
+                "explanations": { "not": "✅ แม่นยำ! `not False` จะกลายเป็น `True` ทำให้เงื่อนไขผ่านฉลุย" }
+            },
+            {
+                "monster": "หุ่นยนต์พิทักษ์ (STAGE 2 - ตรวจสอบความเท่ากัน)",
+                "desc": "ภารกิจ: เช็คว่ารหัสผ่านที่กรอกมา 'ตรงกับ' รหัสจริงที่เซ็ตไว้หรือไม่",
+                "hint": "เครื่องหมายตรวจสอบความเท่ากันคือเครื่องหมายเท่ากับสองตัว (==)",
+                "code": "# 17. Check Equality\nadmin_pass = '1234'\nif user_input [ ___ ] admin_pass:\n    access = 'Granted'",
+                "choices": ["==", "=", "===", "is equal"],
+                "answer": "==",
+                "points": 2500,
+                "explanations": { "==": "✅ เยี่ยมมาก! เครื่องหมาย `==` ใช้เปรียบเทียบค่าสองฝั่ง" }
+            },
+            {
+                "monster": "บอสป้อมปราการด่านย่อย (STAGE 2 - ความต่างคือทางรอด)",
+                "desc": "ภารกิจ: เช็คว่าสถานะปัจจุบัน 'ไม่เท่ากับ' ชนิดที่อันตราย",
+                "hint": "เครื่องหมาย 'ไม่เท่ากับ' ใน Python เขียนแทนด้วย != ",
+                "code": "# 18. Not Equal\nenemy_status = 'Aggressive'\nif enemy_status [ ___ ] 'Dormant':\n    print('Alert! Attack Imminent!')",
+                "choices": ["!=", "<>", "not =", "!=="],
+                "answer": "!=",
+                "points": 2800,
+                "explanations": { "!=": "✅ ถูกต้อง! เครื่องหมายตกใจตามด้วยเท่ากับคือ 'ไม่เท่ากับ'" }
+            },
+            {
+                "monster": "บอสป้อมปราการด่านย่อย (STAGE 2 - วัดขนาดพลังงาน)",
+                "desc": "ภารกิจ: เงื่อนไขตรวจสอบว่าพลังงานของปืน 'มากกว่าหรือเท่ากับ' เกณฑ์ปลอดภัย",
+                "hint": "เครื่องหมายมากกว่าหรือเท่ากับ เขียนเรียงกันเป็น >=",
+                "code": "# 19. Greater Than or Equal\ncharge_level = 85\nif charge_level [ ___ ] 80:\n    print('Hyper Beam Ready')",
+                "choices": [">=", "=>", ">", ">>"],
+                "answer": ">=",
+                "points": 2800,
+                "explanations": { ">=": "✅ ยอดเยี่ยม! เครื่องหมายมากกว่าต้องมาก่อนเครื่องหมายเท่ากับเสมอ" }
+            },
+            {
+                "monster": "บอสป้อมปราการด่านย่อย (STAGE 2 - แฝงตัวในกลุ่ม)",
+                "desc": "ภารกิจ: เช็คว่ารหัสหน่วยข้าศึกอยู่ในบัญชีดำ (Blacklist) หรือไม่",
+                "hint": "คีย์เวิร์ดที่ใช้เช็คว่ามีสมาชิกอยู่ใน List หรือไม่คือคำว่า in",
+                "code": "# 20. Membership Operator\nblacklist = ['E-1', 'E-2', 'E-3']\ncurrent_target = 'E-2'\nif current_target [ ___ ] blacklist:\n    print('Target identified. Open Fire!')",
+                "choices": ["in", "inside", "contains", "has"],
+                "answer": "in",
+                "points": 3000,
+                "explanations": { "in": "✅ ล้างบางด่าน! คีย์เวิร์ด `in` ทรงพลังมากในการเช็คสมาชิกในกลุ่ม" }
+            },
+            {
+                "monster": "ยานเกราะจู่โจม (STAGE 3 - ลูปนับถอยหลัง)",
+                "desc": "ภารกิจ: สั่งให้ระเบิดนับเวลาวนลูปตามช่วงตัวเลขที่กำหนด",
+                "hint": "ฟังก์ชันที่ใช้สร้างช่วงตัวเลขใน For ลูปคือ range()",
+                "code": "# 21. Loop Range\nfor i in [ ___ ](1, 4):\n    print('Counting:', i)",
+                "choices": ["range", "list", "array", "sequence"],
+                "answer": "range",
+                "points": 3000,
+                "explanations": { "range": "✅ ถูกต้อง! `range(1, 4)` จะสร้างเลข 1, 2, 3 เพื่อวนลูป" }
+            },
+            {
+                "monster": "ยานเกราะจู่โจม (STAGE 3 - วนลูปจนกว่าจะพัง)",
+                "desc": "ภารกิจ: สั่งให้ปืนกลยิงถล่มอย่างต่อเนื่องตราบใดที่กระสุนยังมีอยู่",
+                "hint": "คำสั่งลูปที่จะทำงาน 'ตราบใดที่เงื่อนไขยังเป็นจริง' คือ while",
+                "code": "# 22. While Loop\nammo = 5\n[ ___ ] ammo > 0:\n    print('BANG!')\n    ammo -= 1",
+                "choices": ["while", "for", "loop", "until"],
+                "answer": "while",
+                "points": 3000,
+                "explanations": { "while": "✅ ยิงไม่ยั้ง! `while` เช็คเงื่อนไขก่อนวนซ้ำทุกรอบ" }
+            },
+            {
+                "monster": "ยานเกราะจู่โจม (STAGE 3 - ตัดวงจรฉุกเฉิน)",
+                "desc": "ภารกิจ: สั่งให้ลูปหยุดทำงานทันทีเมื่อเซ็นเซอร์ตรวจจับความร้อนเกินกำหนด",
+                "hint": "คำสั่งที่ใช้ 탈출 (หลุดออกจากลูป) ทันทีคือคำสั่ง break",
+                "code": "# 23. Break Loop\nwhile True:\n    heat += 10\n    if heat > 100:\n        [ ___ ]\nprint('Cooling initiated.')",
+                "choices": ["break", "stop", "exit", "end"],
+                "answer": "break",
+                "points": 3200,
+                "explanations": { "break": "✅ หยุดระบบได้ทันเวลา! `break` ทำลายลูปที่ทำงานอยู่ทันที" }
+            },
+            {
+                "monster": "ยานเกราะจู่โจม (STAGE 3 - ข้ามขั้นตอนอันตราย)",
+                "desc": "ภารกิจ: หากสแกนเจอวัตถุที่เป็นมิตร ให้ 'ข้าม' ไปรอบถัดไปทันทีโดยไม่ยิงโจมตี",
+                "hint": "คำสั่งที่ใช้ข้ามโค้ดที่เหลือในลูปแล้วไปเริ่มรอบถัดไปทันทีคือ continue",
+                "code": "# 24. Continue Loop\nfor target in targets:\n    if target == 'Friendly':\n        [ ___ ]\n    fire_at(target)",
+                "choices": ["continue", "skip", "next", "pass"],
+                "answer": "continue",
+                "points": 3200,
+                "explanations": { "continue": "✅ โดนเต็มๆ! `continue` บังคับให้ลูปขึ้นรอบใหม่ทันที" }
+            },
+            {
+                "monster": "เครื่องจักรกลขุดเจาะ (STAGE 3 - วนลูปไร้สิ้นสุด)",
+                "desc": "ภารกิจ: เปิดระบบเรดาร์สแกนหาข้าศึกแบบ Real-time ไม่มีวันสิ้นสุด",
+                "hint": "การทำ Infinite Loop แบบมาตรฐานจะใช้คำสั่ง while True:",
+                "code": "# 25. Infinite Radar Loop\nwhile [ ___ ]:\n    scan_sky()\n    if detect_enemy():\n        break",
+                "choices": ["True", "1", "loop", "Always"],
+                "answer": "True",
+                "points": 3500,
+                "explanations": { "True": "✅ เรดาร์ทำงาน! `while True` จะวนไปเรื่อยๆ จนกว่าจะมีใครสั่ง break" }
+            },
+            {
+                "monster": "เครื่องจักรกลขุดเจาะ (STAGE 3 - ดึงข้อมูลดัชนี)",
+                "desc": "ภารกิจ: วนลูปรายชื่อคลังอาวุธโดยต้องการทั้งตัวเลข 'ลำดับ (Index)' และ 'ชื่อสิ่งของ'",
+                "hint": "ฟังก์ชันที่ช่วยแจกแจงดัชนีพร้อมข้อมูลคือ enumerate()",
+                "code": "# 26. Enumerate Loop\nweapons = ['Rifle', 'Laser', 'Shield']\nfor index, name in [ ___ ](weapons):\n    print(index, name)",
+                "choices": ["enumerate", "index", "zip", "list"],
+                "answer": "enumerate",
+                "points": 3500,
+                "explanations": { "enumerate": "✅ ถูกต้อง! ฟังก์ชันนี้จะส่งกลับคืนมาเป็นคู่ลำดับ" }
+            },
+            {
+                "monster": "เครื่องจักรกลขุดเจาะ (STAGE 3 - มัดรวมพิกัด)",
+                "desc": "ภารกิจ: วนลูปดึงข้อมูลจาก List แกน X และ List แกน Y พร้อมๆ กันเป็นคู่",
+                "hint": "ฟังก์ชันที่ใช้จับคู่จับกลุ่ม List หลายสายในลูปเดียวคือ zip()",
+                "code": "# 27. Zip Execution\nx_lines = [10, 20]\ny_lines = [50, 60]\nfor x, y in [ ___ ](x_lines, y_lines):\n    move_to(x, y)",
+                "choices": ["zip", "combine", "merge", "pair"],
+                "answer": "zip",
+                "points": 3500,
+                "explanations": { "zip": "✅ ยอดเยี่ยม! เหมือนซิปเสื้อผ้าที่รูดจับคู่สิ่งของเข้าด้วยกัน" }
+            },
+            {
+                "monster": "ผู้บัญชาการหุ่นยนต์เดรดน็อต (STAGE 3 - ปล่อยผ่านไร้การกระทำ)",
+                "desc": "ภารกิจ: เขียนโครงสร้างเงื่อนไขทิ้งไว้แต่ยังไม่ต้องการให้ทำอะไร (ปล่อยให้ผ่านไปก่อนเพื่อไม่ให้โค้ด Error)",
+                "hint": "คีย์เวิร์ดที่เปรียบเหมือนร่างทรงว่างเปล่าทำหน้าที่ข้ามผ่านช่องว่างคือ pass",
+                "code": "# 28. Null Statement Pass\nif system_status == 'Updating':\n    [ ___ ]\nelse:\n    run_defense()",
+                "choices": ["pass", "continue", "skip", "null"],
+                "answer": "pass",
+                "points": 3800,
+                "explanations": { "pass": "✅ ผ่านฉลุย! `pass` ใช้สร้างบล็อกเปล่าๆ ไม่ให้ Python แจ้งเตือน IndentationError" }
+            },
+            {
+                "monster": "ผู้บัญชาการหุ่นยนต์เดรดน็อต (STAGE 3 - สร้างกองทัพทางลัด)",
+                "desc": "ภารกิจ: ใช้เทคนิค List Comprehension สร้างลิสต์ทวีคูณพลังงานแบบเร่งด่วน",
+                "hint": "โครงสร้างย่อของ List Comprehension จะมีลูป for ซ่อนอยู่ข้างในวงเล็บเหลี่ยม",
+                "code": "# 29. List Comprehension\npower_sources = [1, 2, 3]\nboosted = [x * 10 [ ___ ] x in power_sources]",
+                "choices": ["for", "in", "if", "each"],
+                "answer": "for",
+                "points": 3800,
+                "explanations": { "for": "✅ โค้ดกระชับทรงพลัง! นี่คือสูตรสำเร็จในการสร้างลิสต์แบบโปรไพธอน" }
+            },
+            {
+                "monster": "ผู้บัญชาการหุ่นยนต์เดรดน็อต (STAGE 3 - วนลูปพจนานุกรม)",
+                "desc": "ภารกิจ: วนลูปดึงข้อมูลทั้ง 'Key' และ 'Value' ของดาต้าข้าศึกออกมาพร้อมกัน",
+                "hint": "เมธอดของ Dictionary ที่ส่งคืนคู่คีย์และค่าคือ .items()",
+                "code": "# 30. Loop Through Dictionary\ndata = {'name': 'Boss', 'hp': 999}\nfor key, value in data.[ ___ ]():\n    print(key, value)",
+                "choices": ["items", "keys", "values", "all"],
+                "answer": "items",
+                "points": 4000,
+                "explanations": { "items": "✅ ทะลวงสำเร็จ! `.items()` นำออกมาได้ทั้งคู่กุญแจและข้อมูล" }
+            },
+            {
+                "monster": "หน่วยรบพิฆาตไซบอร์ก (STAGE 4 - สร้างโมดูลปืน)",
+                "desc": "ภารกิจ: ประกาศสร้างฟังก์ชันใหม่ชื่อว่า `fire_laser`",
+                "hint": "คีย์เวิร์ดที่ใช้ในการนิยามฟังก์ชัน (Define) คือ def",
+                "code": "# 31. Define Function\n[ ___ ] fire_laser():\n    print('ZAP!')",
+                "choices": ["def", "function", "func", "create"],
+                "answer": "def",
+                "points": 4000,
+                "explanations": { "def": "✅ ถูกต้อง! `def` สั้นและกระชับสไตล์ไพธอน" }
+            },
+            {
+                "monster": "หน่วยรบพิฆาตไซบอร์ก (STAGE 4 - ส่งสัญญาณกลับ)",
+                "desc": "ภารกิจ: สั่งให้ฟังก์ชันส่งผลลัพธ์การคำนวณแดนกลับคืนไปยังจุดที่เรียกใช้",
+                "hint": "คีย์เวิร์ดที่ใช้ส่งค่ากลับออกจากฟังก์ชันคือ return",
+                "code": "# 32. Function Return Value\ndef calc_damage(str_level):\n    [ ___ ] str_level * 5\n\nresult = calc_damage(10)",
+                "choices": ["return", "send", "output", "give"],
+                "answer": "return",
+                "points": 4000,
+                "explanations": { "return": "✅ แม่นยำ! `return` จะส่งค่ากลับไปบันทึกในตัวแปร result" }
+            },
+            {
+                "monster": "หน่วยรบพิฆาตไซบอร์ก (STAGE 4 - อาวุธไร้นาม)",
+                "desc": "ภารกิจ: สร้างฟังก์ชันย่อบรรทัดเดียว (Anonymous Function) เพื่อคำนวณพลังโจมตีแบบด่วน",
+                "hint": "ฟังก์ชันนิรนามหรือฟังก์ชันบรรทัดเดียวใน Python คือ lambda",
+                "code": "# 33. Lambda Function\nquick_attack = [ ___ ] x: x + 100\nprint(quick_attack(5))",
+                "choices": ["lambda", "inline", "anon", "def"],
+                "answer": "lambda",
+                "points": 4200,
+                "explanations": { "lambda": "✅ โจมตีเฉียบคม! ฟังก์ชัน `lambda` ทำงานได้อย่างรวดเร็ว" }
+            },
+            {
+                "monster": "หน่วยรบพิฆาตไซบอร์ก (STAGE 4 - พลังงานสมบูรณ์)",
+                "desc": "ภารกิจ: ใช้ฟังก์ชันคณิตศาสตร์แปลงค่าพลังงานติดลบให้กลายเป็นค่าสัมบูรณ์ (บวกเสมอ)",
+                "hint": "ฟังก์ชันที่ใช้หาค่าสัมบูรณ์ (Absolute Value) คือ abs()",
+                "code": "# 34. Absolute Value Built-in\nraw_energy = -75\nsecure_energy = [ ___ ](raw_energy)",
+                "choices": ["abs", "absolute", "positive", "num"],
+                "answer": "abs",
+                "points": 4200,
+                "explanations": { "abs": "✅ คำนวณถูกต้อง! ค่าติดลบจะถูกตีกลับเป็นบวก 75 ทันที" }
+            },
+            {
+                "monster": "ยานโดรนพิฆาตทมิฬ (STAGE 4 - หาจุดอ่อนข้าศึก)",
+                "desc": "ภารกิจ: สแกนหาค่าเกราะป้องกันที่ 'ต่ำที่สุด' จากอาร์เรย์ของศัตรูเพื่อเข้าโจมตี",
+                "hint": "ฟังก์ชันที่ใช้หาค่าที่น้อยที่สุดในกลุ่มข้อมูลคือ min()",
+                "code": "# 35. Find Minimum Value\nshields = [80, 45, 95, 30]\nweakest_point = [ ___ ](shields)",
+                "choices": ["min", "minimum", "low", "lowest"],
+                "answer": "min",
+                "points": 4500,
+                "explanations": { "min": "✅ เจอจุดอ่อนแล้ว! ค่า 30 ถูกดึงออกมาโจมตีเรียบร้อย" }
+            },
+            {
+                "monster": "ยานโดรนพิฆาตทมิฬ (STAGE 4 - ค้นหาขีดจำกัดสูงสุด)",
+                "desc": "ภารกิจ: หาค่าสัญญาณชีพจรที่ 'สูงที่สุด' เพื่อระบุตัวหัวหน้ากองทัพ",
+                "hint": "ฟังก์ชันที่ใช้หาค่าที่มากที่สุดในกลุ่มข้อมูลคือ max()",
+                "code": "# 36. Find Maximum Value\nsignals = [102, 508, 320]\nboss_signal = [ ___ ](signals)",
+                "choices": ["max", "maximum", "high", "highest"],
+                "answer": "max",
+                "points": 4500,
+                "explanations": { "max": "✅ ล็อกหัวหน้าได้สำเร็จ! ค่า 508 ถูกตรวจพบ" }
+            },
+            {
+                "monster": "ยานโดรนพิฆาตทมิฬ (STAGE 4 - ปัดเศษพิกัดปืนใหญ่)",
+                "desc": "ภารกิจ: ปัดเศษตัวเลขทศนิยมของการคำนวณตำแหน่งให้เป็นจำนวนเต็มใกล้เคียงที่สุด",
+                "hint": "ฟังก์ชันปัดเศษใน Python คือ round()",
+                "code": "# 37. Round Number\ntarget_coordinate = 45.76\nfinal_coordinate = [ ___ ](target_coordinate)",
+                "choices": ["round", "ceil", "floor", "int"],
+                "answer": "round",
+                "points": 4500,
+                "explanations": { "round": "✅ พิกัดแม่นยำ! 45.76 จะถูกปัดขึ้นเป็น 46 ถ้วน" }
+            },
+            {
+                "monster": "จอมพลเอเลี่ยนไร้พ่าย (STAGE 4 - รับคำสั่งแทรกซึม)",
+                "desc": "ภารกิจ: สั่งให้โปรแกรมหยุดรอเพื่อรับข้อมูลตัวอักษรพิมพ์ป้อนเข้ามาจากผู้ใช้งาน",
+                "hint": "ฟังก์ชันเปิดช่องรับข้อมูลจากคีย์บอร์ดทางเทอร์มินัลคือ input()",
+                "code": "# 38. User Input Command\nsecret_code = [ ___ ]('กรุณาป้อนรหัสยืนยันตัวตน: ')\nprint('รหัสของคุณคือ:', secret_code)",
+                "choices": ["input", "read", "scanf", "get"],
+                "answer": "input",
+                "points": 4800,
+                "explanations": { "input": "✅ เปิดช่องรับข้อมูลสำเร็จ! ข้อมูลที่กรอกจะเข้ามาในรูปแบบ String" }
+            },
+            {
+                "monster": "จอมพลเอเลี่ยนไร้พ่าย (STAGE 4 - ตรวจสอบตัวแปรภายนอก)",
+                "desc": "ภารกิจ: ตรวจสอบความถูกต้องว่าตัวแปรสภาพแวดล้อมระบบมีตัวตนอยู่จริงหรือไม่",
+                "hint": "ฟังก์ชันตรวจสอบว่ามีตัวแปรนี้ประกาศอยู่จริงหรือไม่ในขอบเขตปัจจุบันคือ hasattr() หรือเช็คด้วยคำสั่งชี้เฉพาะ",
+                "code": "# 39. Global Scope Check\n# หากต้องการเช็คว่าตัวแปรได้รับการนิยามหรือยัง\nif 'shield' in [ ___ ]():\n    print('Scope Secure')",
+                "choices": ["globals", "locals", "vars", "dir"],
+                "answer": "globals",
+                "points": 4800,
+                "explanations": { "globals": "✅ แฮกสำเร็จ! `globals()` คืนค่ากลับมาเป็นดิกชันนารีของตัวแปรระดับ Global" }
+            },
+            {
+                "monster": "จอมพลเอเลี่ยนไร้พ่าย (STAGE 4 - ปิดขอบเขต)",
+                "desc": "ภารกิจ: เติมเครื่องหมายวงเล็บเพื่อเรียกใช้งาน (Call) ฟังก์ชันตรวจจับสัญญาณให้ออกมาทำงาน",
+                "hint": "การสั่งให้ฟังก์ชันทำงานตามปกติ จะต้องลงท้ายด้วยเครื่องหมายวงเล็บเปิดและปิด ()เสมอ",
+                "code": "# 40. Execute/Call Function\ndef alert_hq():\n    print('ALERT!')\n\nalert_hq[ ___ ]",
+                "choices": ["()", ";", "[]", "='Run'"],
+                "answer": "()",
+                "points": 5000,
+                "explanations": { "()": "✅ ล้างกระดาน! วงเล็บปิดท้ายคือหัวใจสำคัญในการสั่งลั่นไกฟังก์ชัน" }
+            },
+            {
+                "monster": "เอเลี่ยนบอสระดับขุนพล (STAGE 5 - บันทึกคลังเก็บของ)",
+                "desc": "ภารกิจ: เพิ่มชื่ออาวุธใหม่ลงไป 'ต่อท้ายสุด' ของ List ข้อมูลคลังแสง",
+                "hint": "เมธอดเพิ่มสมาชิกต่อท้ายลิสต์คือ .append()",
+                "code": "# 41. List Append Method\ninventory = ['Knife', 'Gun']\ninventory.[ ___ ]('Laser_Cannon')",
+                "choices": ["append", "add", "push", "insert"],
+                "answer": "append",
+                "points": 5000,
+                "explanations": { "append": "✅ ติดตั้งปืนใหญ่สำเร็จ! สมาชิกจะไปต่อท้าย" }
+            },
+            {
+                "monster": "เอเลี่ยนบอสระดับขุนพล (STAGE 5 - ปลดอาวุธข้าศึก)",
+                "desc": "ภารกิจ: นำไอเทม 'ชิ้นสุดท้าย' ออกจากลิสต์ข้อมูลกระเป๋าเพื่อโยนทิ้งไป",
+                "hint": "เมธอดที่ใช้ดึงสมาชิกตัวสุดท้ายออกและคืนค่ากลับมาคือ .pop()",
+                "code": "# 42. List Pop Method\nweapons = ['Pistol', 'Grenade']\ndropped = weapons.[ ___ ]()",
+                "choices": ["pop", "remove", "delete", "clear"],
+                "answer": "pop",
+                "points": 5000,
+                "explanations": { "pop": "✅ ปลดระเบิดสำเร็จ! Grenade จะถูกดึงออกไป" }
+            },
+            {
+                "monster": "เอเลี่ยนบอสระดับขุนพล (STAGE 5 - เจาะข้อมูลดิกชันนารี)",
+                "desc": "ภารกิจ: เข้าถึงข้อมูล 'เลือด (HP)' ของเป้าหมายจากโครงข้อมูลแบบ Dictionary",
+                "hint": "การดึงข้อมูลจาก Key ใน Dictionary สามารถใช้เครื่องหมายวงเล็บเหลี่ยม ['key_name']",
+                "code": "# 43. Dictionary Access\nenemy_profile = {'class': 'Elite', 'hp': 950}\ncurrent_hp = enemy_profile[[ ___ ]]",
+                "choices": ["'hp'", "hp", "1", "['hp']"],
+                "answer": "'hp'",
+                "points": 5200,
+                "explanations": { "'hp'": "✅ ล็อกเป้าหมายแม่นยำ! ดึงค่าเลือด 950 ออกมาคำนวณสำเร็จ" }
+            },
+            {
+                "monster": "เอเลี่ยนบอสระดับขุนพล (STAGE 5 - กรองสายพันธุ์แท้)",
+                "desc": "ภารกิจ: แปลงลิสต์ข้อมูลที่มีตัวซ้ำ ให้กลายเป็นโครงสร้างข้อมูลแบบ 'Set' เพื่อตัดตัวซ้ำทิ้งให้หมด",
+                "hint": "โครงสร้างข้อมูล Set จะเก็บเฉพาะข้อมูลที่ไม่ซ้ำกันเท่านั้น เรียกใช้ผ่านฟังก์ชัน set()",
+                "code": "# 44. Set Conversion\nraw_data = [1, 2, 2, 3, 3, 3]\nunique_data = [ ___ ](raw_data)",
+                "choices": ["set", "tuple", "dict", "unique"],
+                "answer": "set",
+                "points": 5200,
+                "explanations": { "set": "✅ คัดกรองสมบูรณ์! ข้อมูลจะเหลือเพียงตัวที่ไม่ซ้ำ" }
+            },
+            {
+                "monster": "ผู้คุ้มกันยานแม่ลำเลียง (STAGE 5 - วางฉนวนป้องกันบัก)",
+                "desc": "ภารกิจ: สร้างบล็อกป้องกันภัย เพื่อทดลองรันโค้ดส่วนที่อาจจะเกิดข้อผิดพลาด (Error)",
+                "hint": "คีย์เวิร์ดแรกในการเริ่มกระบวนการดักจับข้อยกเว้นหรือ Error คือคำว่า try",
+                "code": "# 45. Try-Except Block Start\n[ ___ ]:\n    result = 10 / 0\nexcept ZeroDivisionError:\n    print('ห้ามหารด้วยศูนย์ทหาร!')",
+                "choices": ["try", "attempt", "catch", "protect"],
+                "answer": "try",
+                "points": 5500,
+                "explanations": { "try": "✅ เปิดโล่ป้องกันระบบ! โค้ดเสี่ยงตายจะถูกนำไปทดสอบในบล็อก try" }
+            },
+            {
+                "monster": "บอสใหญ่ยานแม่ลำเลียง (BOSS - STAGE 10)",
+                "desc": "ภารกิจบอส: เขียนบล็อกรอรับมือกรณีที่โค้ดด้านบนเกิด Error ขึ้นมาจริงๆ โปรแกรมจะได้ไม่พัง",
+                "hint": "ใน Python จะใช้คำว่า except ทำหน้าที่ตรวจจับ Error",
+                "code": "# 46. Exception Handling\ntry:\n    weapon_index = inventory[99]\n[ ___ ] IndexError:\n    print('ไม่พบตำแหน่งไอเทมชิ้นนี้ในกระเป๋า!')",
+                "choices": ["except", "catch", "error", "on_error"],
+                "answer": "except",
+                "points": 5500,
+                "explanations": { "except": "✅ ระบบกู้ภัยทำงาน! โปรแกรมรันต่อได้" }
+            },
+            {
+                "monster": "บอสใหญ่ยานแม่ลำเลียง (BOSS - STAGE 10)",
+                "desc": "ภารกิจบอส: เติมคำสั่งในบล็อกดักจับ Error ที่จะ 'บังคับทำงานเสมอ' ไม่ว่าจะเกิดข้อผิดพลาดขึ้นหรือไม่ก็ตาม",
+                "hint": "บล็อกสุดท้ายที่ทำงานแน่นอน 100% เสมอคือคำสั่ง finally:",
+                "code": "# 47. Finally Block\ntry:\n    connect_database()\nexcept ConnectionError:\n    print('Fail')\n[ ___ ]\n    print('ปิดทองหลังพระ บรรทัดนี้ยังไงก็ต้องทำงาน!')",
+                "choices": ["finally:", "always:", "end:", "last:"],
+                "answer": "finally:",
+                "points": 5500,
+                "explanations": { "finally:": "✅ ปลอดภัยสูงสุด! โคลอนต้องมาพร้อมคำสั่ง `finally:`" }
+            },
+            {
+                "monster": "บอสใหญ่ยานแม่ลำเลียง (BOSS - STAGE 10)",
+                "desc": "ภารกิจบอส: ทำการดึงข้อมูลไลบรารีคณิตศาสตร์ภายนอก (Module) เข้ามาเสริมทัพในโปรแกรม",
+                "hint": "คีย์เวิร์ดที่ใช้ในการนำเข้ามอดูลหรือคลังรหัสภายนอกคือ import",
+                "code": "# 48. Import External Module\n[ ___ ] math\nprint(math.sqrt(16))",
+                "choices": ["import", "include", "require", "using"],
+                "answer": "import",
+                "points": 5800,
+                "explanations": { "import": "✅ อิมพอร์ตสำเร็จ! ดึงเครื่องมือจากโมดูล `math` มาถล่มศัตรูได้ทันที" }
+            },
+            {
+                "monster": "มหาจักรพรรดิเอเลี่ยนเซนทอร่า (FINAL BOSS)",
+                "desc": "ภารกิจบอส: เจาะจงดึงฟังก์ชันสุ่มตัวเลข (randint) มาจากมอดูลใหญ่ชื่อ random โดยตรง",
+                "hint": "โครงสร้างการอิมพอร์ตเฉพาะส่วนคือ: from [module_name] import [function_name]",
+                "code": "# 49. Specific Import Protocol\n[ ___ ] random import randint\ndice_roll = randint(1, 6)",
+                "choices": ["from", "get", "source", "select"],
+                "answer": "from",
+                "points": 5800,
+                "explanations": { "from": "✅ สัญญานชัดเจน! เจาะจงระบุแหล่งที่มาจาก `random` สำเร็จ" }
+            },
+            {
+                "monster": "มหาจักรพรรดิเอเลี่ยนเซนทอร่า (FINAL BOSS)",
+                "desc": "ภารกิจบอส: เรียกหาค่าคงที่คณิตศาสตร์ 'Pi (พาย)' จากมอดูล math มายิงทำลายร่างสุดท้ายของบอสใหญ่",
+                "hint": "ค่าคงที่ Pi ในโมดูล math เขียนแทนด้วยตัวแปรสั้นๆ ว่า math.pi",
+                "code": "# 50. Final Ultimate Calculation\nimport math\n# ค้นหาสิ่งที่จะใส่เพื่อดึงค่าคงที่พาย (3.1415...)\nultimate_laser_frequency = math.[ ___ ]\nprint('ULTIMATE BEAM LAUNCHED at:', ultimate_laser_frequency)",
+                "choices": ["pi", "PI", "Pi", "pie"],
+                "answer": "pi",
+                "points": 10000,
+                "explanations": { "pi": "✅ 💥 บอสพินาศ สงครามสิ้นสุดลงแล้ว! คุณคือนักเขียนโค้ดระดับตำนาน!" }
+            }
+        ];
+
+        const respawnQuotes = [
+            { en: "Failure is simply the opportunity to begin again, this time more intelligently.", th: "ความล้มเหลวคือโอกาสในการเริ่มต้นใหม่อีกครั้ง อย่างชาญฉลาดกว่าเดิม", author: "Henry Ford" },
+            { en: "It does not matter how slowly you go as long as you do not stop.", th: "ไม่สำคัญหรอกว่าคุณจะเดินช้าแค่ไหน ตราบใดที่คุณยังไม่หยุดเดิน", author: "Confucius" },
+            { en: "Success is not final, failure is not fatal: it is the courage to continue that counts.", th: "ความสำเร็จไม่ใช่จุดสิ้นสุด ความล้มเหลวก็ไม่ใช่จุดจบ ความกล้าที่จะก้าวต่อไปต่างหากที่สำคัญ", author: "Don Herold" },
+            { en: "The only real mistake is the one from which we learn nothing.", th: "ความผิดพลาดที่แท้จริงเพียงอย่างเดียว คือความผิดพลาดที่เราไม่ได้เรียนรู้อะไรจากมันเลย", author: "John Powell" },
+            { en: "Fall seven times and stand up eight.", th: "ล้มเจ็ดครั้ง ลุกแปดครั้ง", author: "Japanese Proverb" },
+            { en: "I have not failed. I've just found 10,000 ways that won't work.", th: "ผมไม่ได้ล้มเหลว ผมแค่ค้นพบ 10,000 วิธีที่มันไม่ได้ผลต่างหาก", author: "Thomas A. Edison" }
+        ];
+
+        let quests = [];
+        let currentStage = 0;
+        let score = 0;
+        let lives = 3; 
+        let accumulatedCodeString = ""; 
+        let levelStartCodeString = ""; 
+        let originalHelperText = "";
+        let currentActiveAdminTab = "quests";
+
+        function initGameData() {
+            const savedData = localStorage.getItem('contraQuestsData');
+            if (savedData) {
+                try { quests = JSON.parse(savedData); } 
+                catch (e) { quests = [...defaultQuests]; }
+            } else { quests = [...defaultQuests]; }
+        }
+
+        function checkSavedProgress() {
+            const saveKey = isHardMode ? 'contraProgressHard' : 'contraProgress';
+            const savedProgress = localStorage.getItem(saveKey);
+            
+            if (savedProgress && !isHardMode) { 
+                document.getElementById('btn-continue').classList.remove('hidden'); 
+            } else if (savedProgress && isHardMode) {
+                document.getElementById('btn-continue-hard').classList.remove('hidden');
+            }
+        }
+
+        function saveMaxRecord() {
+            let maxRecord = JSON.parse(localStorage.getItem('contraMaxRecord')) || { stage: -1, mode: 'normal' };
+            let currentModeStr = isHardMode ? 'hard' : 'normal';
+
+            if (currentStage > maxRecord.stage || (currentStage === maxRecord.stage && currentModeStr === 'hard' && maxRecord.mode !== 'hard')) {
+                maxRecord.stage = currentStage;
+                maxRecord.mode = currentModeStr;
+                localStorage.setItem('contraMaxRecord', JSON.stringify(maxRecord));
+            }
+        }
+
+        function loadMaxRecordUI() {
+            const maxRecordDisplay = document.getElementById('max-record-display');
+            const recordData = JSON.parse(localStorage.getItem('contraMaxRecord'));
+            
+            if (recordData && recordData.stage >= 0) {
+                let stgIndex = recordData.stage; 
+                let modeIcon = recordData.mode === 'hard' ? '<span class="text-red-500 ml-2 animate-pulse" title="HARD MODE">💀</span>' : '';
+                
+                if (stgIndex >= quests.length) {
+                    document.getElementById('record-text').innerHTML = `MISSION <span class='text-green-400'>CLEARED</span>${modeIcon}`;
+                    document.getElementById('hard-lock-icon').innerText = "🔥";
+                    document.getElementById('btn-hard-mode').classList.replace("text-red-500", "text-red-400");
+                } else {
+                    let lvl = Math.floor(stgIndex / 5) + 1;
+                    let stg = stgIndex + 1;
+                    document.getElementById('record-text').innerHTML = `LVL <span class="text-pink-400">${lvl}</span> - STAGE <span class="text-blue-400">${stg}</span>${modeIcon}`;
+                }
+                maxRecordDisplay.classList.remove('hidden');
+            }
+        }
+
+        function saveProgress() {
+            const progress = { 
+                stage: currentStage, score: score, lives: lives,
+                code: accumulatedCodeString, levelCode: levelStartCodeString
+            };
+            const saveKey = isHardMode ? 'contraProgressHard' : 'contraProgress';
+            localStorage.setItem(saveKey, JSON.stringify(progress));
+            saveMaxRecord();
+        }
+
+        function updateLivesUI() {
+            let hearts = '';
+            for(let i=0; i<3; i++) { hearts += i < lives ? '❤️' : '🖤'; }
+            document.getElementById('lives-display').innerText = hearts;
+        }
+
+        function promptHardMode() {
+            const recordData = JSON.parse(localStorage.getItem('contraMaxRecord'));
+            const isUnlocked = (recordData && recordData.stage >= quests.length);
+            
+            if (isUnlocked) {
+                document.getElementById('hard-lock-msg').classList.add('hidden');
+                document.getElementById('btn-force-hard').innerText = "ลุยโหมดยาก (START HARD MODE)";
+            } else {
+                document.getElementById('hard-lock-msg').classList.remove('hidden');
+                document.getElementById('btn-force-hard').innerText = "ฝืนเข้าโหมดยาก (ENTER ANYWAY)";
+            }
+            document.getElementById('hard-mode-modal').classList.remove('hidden');
+        }
+
+        // =========================================================================
+        // 🔄 ฟังก์ชันแอนิเมชันสำหรับเปิด/ปิดหน้าจอ (แยกการทำงานของ Section เด็ดขาด)
+        // =========================================================================
+        function transitionToScreen(targetScreenId) {
+            const transScreen = document.getElementById('transition-screen');
+            const textContainer = document.getElementById('transition-text');
+            const startScreen = document.getElementById('start-screen');
+            const gameScreen = document.getElementById('game-screen');
+            
+            const warningSign = document.getElementById('transition-warning');
+            const scanline = document.getElementById('transition-scanline');
+            const cursor = document.getElementById('transition-cursor');
+            
+            if (targetScreenId === 'game') stopBgCodeAnimation();
+            
+            // 🛑 1. ซ่อนหน้าจอทั้งหมดก่อนเพื่อไม่ให้ซ้อนทับกัน
+            startScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            gameScreen.classList.remove('flex'); // ลบ flex ออกกันเหนียว
+            
+            // ⚙️ 2. ตั้งค่าและแสดง Transition Screen
+            transScreen.classList.remove('hard-mode-transition');
+            textContainer.className = "code-font text-green-500 text-lg md:text-2xl drop-shadow-[0_0_8px_rgba(34,197,94,0.6)] whitespace-pre-wrap leading-loose";
+            cursor.className = "typing-cursor text-green-500 text-2xl";
+            warningSign.classList.add('hidden');
+            scanline.classList.add('hidden');
+
+            transScreen.classList.remove('hidden');
+            transScreen.classList.add('flex');
+            
+            setTimeout(() => { transScreen.classList.remove('opacity-0'); }, 10);
+            textContainer.innerHTML = '';
+            
+            let lines = [];
+            
+            if (targetScreenId === 'game') {
+                if (isHardMode) {
+                    transScreen.classList.add('hard-mode-transition');
+                    textContainer.className = "code-font text-red-500 text-lg md:text-2xl drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] whitespace-pre-wrap leading-loose font-bold";
+                    cursor.className = "typing-cursor text-red-500 text-2xl";
+                    warningSign.classList.remove('hidden');
+                    scanline.classList.remove('hidden');
+                    
+                    lines = [
+                        "> WARNING: LETHAL DIFFICULTY DETECTED...", 
+                        "> DISABLING SAFETY PROTOCOLS...", 
+                        "> NO INTEL. NO MERCY.", 
+                        "> ENTERING DANGER ZONE..."
+                    ];
+                } else {
+                    lines = [
+                        "> INITIATING SYSTEM OVERRIDE...", 
+                        "> LOADING WEAPON MODULES...", 
+                        "> DECRYPTING STAGE DATA...", 
+                        "> ACCESS GRANTED."
+                    ];
+                }
+            } else {
+                lines = ["> DISCONNECTING...", "> SAVING MISSION DATA...", "> CLEARING MEMORY...", "> SYSTEM STANDBY."];
+            }
+
+            let i = 0; let charIndex = 0;
+
+            setTimeout(() => {
+                const typeInt = setInterval(() => {
+                    if (i < lines.length) {
+                        if (charIndex < lines[i].length) {
+                            textContainer.innerHTML += lines[i].charAt(charIndex);
+                            charIndex++;
+                            if (charIndex % 2 === 0) soundType();
+                        } else {
+                            textContainer.innerHTML += "<br>"; i++; charIndex = 0;
+                        }
+                    } else {
+                        clearInterval(typeInt);
+                        // 🛑 3. พิมพ์เสร็จแล้ว เฟดหน้า Transition ทิ้ง
+                        setTimeout(() => {
+                            transScreen.classList.add('opacity-0');
+                            setTimeout(() => {
+                                transScreen.classList.add('hidden');
+                                transScreen.classList.remove('flex');
+                                textContainer.innerHTML = '';
+                                
+                                // 🟢 4. แสดงหน้าจอปลายทาง หลังจากหน้า Transition ปิดไปแล้วเท่านั้น
+                                if (targetScreenId === 'game') {
+                                    gameScreen.classList.remove('hidden');
+                                    gameScreen.classList.add('flex');
+                                    loadStage();
+                                } else {
+                                    startScreen.classList.remove('hidden');
+                                    startBgCodeAnimation();
+                                }
+                            }, 500);
+                        }, 600);
+                    }
+                }, 20); 
+            }, 500); 
+        }
+
+        function startNewGame(hardModeFlag) {
+            isHardMode = hardModeFlag;
+            const saveKey = isHardMode ? 'contraProgressHard' : 'contraProgress';
+            
+            if(localStorage.getItem(saveKey)) {
+                if(!confirm(`คุณต้องการเริ่มเกมใหม่ตั้งแต่ด่าน 1 ในโหมด ${isHardMode ? 'HARD' : 'NORMAL'} ใช่หรือไม่? (เซฟปัจจุบันจะถูกลบทิ้ง)`)) return;
+            }
+            
+            localStorage.removeItem(saveKey); 
+            currentStage = 0; score = 0; lives = 3; 
+            accumulatedCodeString = ""; levelStartCodeString = "";
+            document.getElementById('hard-mode-modal').classList.add('hidden');
+            transitionToScreen('game');
+        }
+
+        function continueGame(hardModeFlag) {
+            isHardMode = hardModeFlag;
+            const saveKey = isHardMode ? 'contraProgressHard' : 'contraProgress';
+            const savedProgress = localStorage.getItem(saveKey);
+            
+            if (savedProgress) {
+                try {
+                    const data = JSON.parse(savedProgress);
+                    currentStage = data.stage; score = data.score; 
+                    lives = data.lives !== undefined ? data.lives : 3;
+                    accumulatedCodeString = data.code; levelStartCodeString = data.levelCode || "";
+                } catch(e) { console.error("Save file corrupted"); }
+            } 
+            transitionToScreen('game');
+        }
+
+        function confirmReturnHome() {
+            if(confirm("คุณต้องการกลับไปหน้าหลักหรือไม่? (ความคืบหน้าจะถูกบันทึกไว้อัตโนมัติ)")) {
+                saveProgress();
+                returnToMainMenu();
+            }
+        }
+
+        function returnToMainMenu() {
+            document.getElementById("game-over-screen").classList.add("hidden");
+            loadMaxRecordUI();
+            
+            document.getElementById('btn-continue').classList.add('hidden');
+            document.getElementById('btn-continue-hard').classList.add('hidden');
+            
+            let originalMode = isHardMode;
+            isHardMode = false; checkSavedProgress(); 
+            isHardMode = true; checkSavedProgress(); 
+            isHardMode = originalMode;
+            
+            transitionToScreen('start');
+        }
+
+        document.getElementById('command-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') { executeCommand(); }
+        });
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            } return array;
+        }
+
+        function respawnLevel() {
+            lives = 3; updateLivesUI();
+            let levelStartStage = Math.floor(currentStage / 5) * 5;
+            let chunk = quests.slice(levelStartStage, levelStartStage + 5);
+            shuffleArray(chunk); quests.splice(levelStartStage, 5, ...chunk);
+            currentStage = levelStartStage; accumulatedCodeString = levelStartCodeString; 
+            document.getElementById("game-over-screen").classList.add("hidden");
+            saveProgress(); loadStage();
+        }
+
+        function loadStage() {
+            saveMaxRecord();
+            if (currentStage >= quests.length) { showVictoryScreen(); return; }
+            const quest = quests[currentStage];
+            
+            if (currentStage % 5 === 0) { levelStartCodeString = accumulatedCodeString; }
+
+            updateLivesUI();
+            document.getElementById("score").innerText = score.toString().padStart(4, '0');
+            let currentLevel = Math.floor(currentStage / 5) + 1;
+            document.getElementById("level-num").innerText = currentLevel; document.getElementById("stage-num").innerText = currentStage + 1;
+            
+            if (isHardMode) {
+                document.getElementById('ui-game-tag').innerText = "HARD MODE";
+                document.getElementById('ui-game-tag').className = "text-[9px] md:text-[10px] bg-red-800 text-white px-2 py-1 align-top ml-2 hidden sm:inline-block rounded-sm";
+                document.getElementById("hint-text").innerText = "[ ENCRYPTED - NO INTEL ]";
+                originalHelperText = "HQ: SIGNAL LOST... ไม่มีคำใบ้ พิมพ์คำตอบเอาตัวรอดเอง!";
+            } else {
+                document.getElementById('ui-game-tag').innerText = currentUiConfig.gameTag;
+                document.getElementById('ui-game-tag').className = "text-[9px] md:text-[10px] theme-bg-accent text-white px-2 py-1 align-top ml-2 hidden sm:inline-block rounded-sm";
+                document.getElementById("hint-text").innerText = quest.hint;
+                originalHelperText = `HQ: ภารกิจที่ ${currentStage + 1} เริ่มต้น! สังเกตคีย์เวิร์ดด้านล่างแล้วพิมพ์ตอบ!`;
+            }
+            
+            document.getElementById("monster-name").innerText = quest.monster;
+            
+            clearTimeout(typingTimeout);
+            const descContainer = document.getElementById("quest-desc");
+            descContainer.innerHTML = '<span id="typewriter-text" class="text-zinc-400"></span><span class="typing-cursor"></span>';
+            const typewriterText = document.getElementById("typewriter-text");
+            let charIndex = 0; const fullText = quest.desc;
+            
+            function typeWriter() {
+                if (charIndex < fullText.length) {
+                    typewriterText.textContent += fullText.charAt(charIndex);
+                    if (charIndex % 3 === 0) soundType();
+                    charIndex++; typingTimeout = setTimeout(typeWriter, 30);
+                }
+            } typeWriter();
+
+            document.getElementById("helper-text").innerText = originalHelperText;
+            document.getElementById("helper-text").className = "text-zinc-300 text-sm leading-relaxed font-bold";
+            
+            document.getElementById("accumulated-code").innerText = accumulatedCodeString;
+            const highlightedCode = quest.code.replace("[ ___ ]", `<span class="bg-red-950 text-red-400 px-2 border border-dashed border-red-500 animate-pulse">[ ___ ]</span>`);
+            document.getElementById("current-code-snippet").innerHTML = highlightedCode;
+
+            const battleBg = document.getElementById("battle-bg-container");
+            const enemySprite = document.getElementById("enemy-sprite");
+            if (currentLevel === 10) { battleBg.classList.add("boss-bg"); enemySprite.classList.add("boss-sprite"); } 
+            else { battleBg.classList.remove("boss-bg"); enemySprite.classList.remove("boss-sprite"); }
+            enemySprite.classList.remove("exploding", "enemy-shooting"); document.getElementById("monster-hp-bar").style.width = "100%";
+
+            const inputField = document.getElementById("command-input");
+            inputField.disabled = false; inputField.value = ""; inputField.focus();
+
+            const choicesContainer = document.getElementById("choices-container");
+            choicesContainer.innerHTML = ""; 
+            
+            let randomizedChoices = [...quest.choices];
+            shuffleArray(randomizedChoices);
+
+            randomizedChoices.forEach(choice => {
+                const tag = document.createElement("span");
+                tag.className = "inline-block bg-zinc-800 border border-zinc-600 text-zinc-300 code-font text-xs py-2 px-4 rounded select-none " + (isHardMode ? "opacity-50" : "cursor-help");
+                tag.innerText = choice;
+                
+                if (!isHardMode) {
+                    tag.onmouseover = () => {
+                        document.getElementById("helper-text").innerText = (quest.explanations && quest.explanations[choice]) ? quest.explanations[choice] : "คีย์เวิร์ดนี้... น่าสนใจ ลองใช้ดูไหม?";
+                        document.getElementById("helper-text").className = "text-blue-400 text-sm leading-relaxed font-bold";
+                    };
+                    tag.onmouseout = () => { document.getElementById("helper-text").innerText = originalHelperText; document.getElementById("helper-text").className = "text-zinc-300 text-sm leading-relaxed font-bold"; };
+                }
+                choicesContainer.appendChild(tag);
+            });
+        }
+
+        function showGameOverScreen() {
+            const goScreen = document.getElementById("game-over-screen");
+            const respawnBtn = document.getElementById("btn-respawn");
+            
+            const randomQuote = respawnQuotes[Math.floor(Math.random() * respawnQuotes.length)];
+            document.getElementById("quote-en").innerText = `"${randomQuote.en}"`;
+            document.getElementById("quote-th").innerText = randomQuote.th;
+            document.getElementById("quote-author").innerText = randomQuote.author;
+
+            goScreen.classList.remove("hidden");
+            respawnBtn.disabled = true;
+            respawnBtn.className = "bg-zinc-800 text-zinc-500 arcade-font text-lg md:text-xl py-4 px-8 rounded border-b-4 border-zinc-900 transition-all cursor-not-allowed w-full max-w-sm";
+            
+            let timeLeft = 3;
+            respawnBtn.innerText = `RESPAWN IN ${timeLeft}...`;
+            
+            const countdown = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) { respawnBtn.innerText = `RESPAWN IN ${timeLeft}...`; } 
+                else {
+                    clearInterval(countdown); respawnBtn.innerText = "RESPAWN NOW"; respawnBtn.disabled = false;
+                    respawnBtn.className = "bg-green-600 hover:bg-green-500 text-white arcade-font text-lg md:text-xl py-4 px-8 rounded border-b-4 border-green-900 active:border-b-0 active:mt-1 transition-all cursor-pointer shadow-[0_0_20px_rgba(74,222,128,0.5)] w-full max-w-sm";
+                }
+            }, 1000);
+        }
+
+        function executeCommand() {
+            const inputField = document.getElementById("command-input");
+            if (inputField.disabled) return; 
+            
+            const userAnswer = inputField.value.trim();
+            const quest = quests[currentStage];
+            if(userAnswer === "") return;
+
+            const soldier = document.getElementById("soldier");
+            const bullet = document.getElementById("bullet-effect");
+            const enemySprite = document.getElementById("enemy-sprite");
+            const enemyBullet = document.getElementById("enemy-bullet-effect");
+            const terminalContainer = document.getElementById("terminal-container");
+
+            clearTimeout(typingTimeout);
+            document.getElementById("typewriter-text").textContent = quest.desc;
+            inputField.disabled = true;
+
+            if (userAnswer === quest.answer) {
+                soldier.classList.add("shooting-recoil"); bullet.classList.add("shooting"); soundShoot(); 
+                setTimeout(() => {
+                    document.getElementById("monster-hp-bar").style.width = "0%"; enemySprite.classList.add("exploding"); soundExplosion(); 
+                    const solvedCode = quest.code.replace("[ ___ ]", `<span class="bg-green-900 text-green-300 px-2 border border-green-500">${quest.answer}</span>`);
+                    document.getElementById("current-code-snippet").innerHTML = solvedCode;
+                    const plainSolvedCode = quest.code.replace("[ ___ ]", quest.answer);
+                    accumulatedCodeString += (accumulatedCodeString === "" ? "" : "\n") + plainSolvedCode;
+                    score += quest.points; document.getElementById("score").innerText = score.toString().padStart(4, '0');
+                    document.getElementById("helper-text").innerText = "HQ: SYNTAX ACCEPTED! เป้าหมายถูกทำลาย เตรียมรับคำสั่งต่อไป!";
+                    document.getElementById("helper-text").className = "text-green-400 text-sm leading-relaxed font-bold";
+                }, 200); 
+
+                setTimeout(() => {
+                    soldier.classList.remove("shooting-recoil"); bullet.classList.remove("shooting");
+                    currentStage++; saveProgress();
+                    let isLevelUp = (currentStage % 5 === 0) && currentStage < quests.length;
+                    if (isLevelUp) { showLevelUpScreen(Math.floor(currentStage / 5) + 1); } else { loadStage(); }
+                }, 2000);
+
+            } else {
+                lives--; updateLivesUI();
+                terminalContainer.classList.add("border-red-600", "error-shake");
+                enemySprite.classList.add("enemy-shooting"); enemyBullet.classList.add("enemy-shooting-bullet"); soundEnemyShoot(); 
+                setTimeout(() => { soldier.classList.add("player-getting-hit"); soundPlayerHit(); }, 100);
+                
+                let feedback = "";
+                if (isHardMode) {
+                    feedback = "❌ SYNTAX ERROR! (DATA CORRUPTED)";
+                } else {
+                    feedback = (quest.explanations && quest.explanations[userAnswer]) ? quest.explanations[userAnswer] : "❌ HQ: SYNTAX ERROR! ตรวจสอบตัวสะกดให้ดี!";
+                }
+
+                if (lives <= 0) { feedback = "☠️ FATAL ERROR: สัญญาณชีพขาดหาย ระบบล้มเหลว!"; }
+                
+                document.getElementById("helper-text").innerText = feedback;
+                document.getElementById("helper-text").className = "text-red-400 text-sm leading-relaxed font-bold";
+
+                setTimeout(() => {
+                    terminalContainer.classList.remove("border-red-600", "error-shake");
+                    enemySprite.classList.remove("enemy-shooting"); enemyBullet.classList.remove("enemy-shooting-bullet"); soldier.classList.remove("player-getting-hit");
+                    
+                    if (lives > 0) {
+                        inputField.disabled = false; inputField.value = ""; inputField.focus();
+                        document.getElementById("helper-text").innerText = originalHelperText; document.getElementById("helper-text").className = "text-zinc-300 text-sm leading-relaxed font-bold";
+                        saveProgress();
+                    } else { showGameOverScreen(); }
+                }, 2000);
+            }
+        }
+
+        function showLevelUpScreen(newLevel) {
+            const levelScreen = document.getElementById("level-up-screen");
+            const levelTitle = document.getElementById("level-title");
+            const levelDesc = document.getElementById("level-desc");
+            soundLevelUp(); 
+            if (newLevel === 10) {
+                levelTitle.innerText = "WARNING: FINAL BOSS!"; levelTitle.className = "arcade-font text-4xl md:text-6xl text-red-600 mb-4 error-shake text-center";
+                levelDesc.innerText = "DETECTING MASSIVE SYNTAX ENERGY... PREPARE FOR BATTLE!"; levelDesc.className = "code-font text-red-400 text-lg md:text-xl text-center";
+            } else {
+                levelTitle.innerText = "LEVEL " + newLevel; levelTitle.className = "arcade-font text-4xl md:text-6xl text-yellow-400 mb-4 animate-bounce text-center";
+                levelDesc.innerText = "SYSTEM UPGRADED. READY FOR NEXT WAVE."; levelDesc.className = "code-font text-green-400 text-lg md:text-xl text-center";
+            }
+            levelScreen.classList.remove("hidden");
+            setTimeout(() => { levelScreen.classList.add("hidden"); loadStage(); }, 3500); 
+        }
+
+        function showVictoryScreen() {
+            saveMaxRecord();
+            sendScoreToBackend(score); 
+            const saveKey = isHardMode ? 'contraProgressHard' : 'contraProgress';
+            localStorage.removeItem(saveKey);
+            
+            const mainArea = document.getElementById("game-main-content");
+            let victoryAvatarUrl = currentCustomAvatar ? currentCustomAvatar : "Gemini_Generated_Image_i3fimhi3fimhi3fi.png";
+            soundLevelUp();
+
+            mainArea.innerHTML = `
+                <div class="col-span-1 md:col-span-2 bg-black p-8 rounded-lg border-4 border-yellow-500 text-center max-w-2xl mx-auto mt-12 flex flex-col items-center shadow-[0_0_30px_rgba(234,179,8,0.3)]">
+                    <h2 class="arcade-font text-xl md:text-4xl text-yellow-500 mb-6 animate-pulse">${isHardMode ? "ULTIMATE OVERRIDE COMPLETE" : "SYSTEM OVERRIDE COMPLETE"}</h2>
+                    <p class="text-zinc-300 mb-6 text-lg">สคริปต์อาวุธสมบูรณ์แบบ! โลกแห่งโค้ดปลอดภัยแล้ว!</p>
+                    <div class="w-full bg-slate-950 p-4 border border-zinc-700 rounded text-left code-font text-sm text-green-400 mb-8 whitespace-pre-wrap leading-loose">${accumulatedCodeString}</div>
+                    <div class="bg-zinc-900 p-6 rounded border-2 border-zinc-700 mb-8 w-full relative overflow-hidden">
+                        <div class="absolute inset-0 opacity-20" style="background-image: url('${victoryAvatarUrl}'); background-size: contain; background-repeat: no-repeat; background-position: center; mix-blend-mode: luminosity; image-rendering: pixelated;"></div>
+                        <span class="arcade-font text-sm text-zinc-500 block mb-3 relative z-10">FINAL SCORE</span>
+                        <span class="arcade-font text-4xl text-green-400 relative z-10">${score.toString().padStart(4, '0')}</span>
+                    </div>
+                    <button onclick="returnToMainMenu()" class="bg-red-600 hover:bg-red-500 text-white arcade-font text-sm py-4 px-8 rounded border-b-4 border-red-900 active:border-b-0 active:mt-1 transition-all cursor-pointer">RETURN TO MAIN MENU</button>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // 4. ADMIN PANEL 
+        // ==========================================
+        function toggleAdminModal() {
+            const modal = document.getElementById("admin-modal");
+            if (modal.classList.contains("hidden")) {
+                document.getElementById('json-editor').value = JSON.stringify(quests, null, 4); document.getElementById('cfg-game-title').value = currentUiConfig.gameTitle; document.getElementById('cfg-game-tag').value = currentUiConfig.gameTag; document.getElementById('cfg-accent-color').value = currentUiConfig.accentColor; document.getElementById('cfg-bg-theme').value = currentUiConfig.bgTheme; document.getElementById('cfg-term-color').value = currentUiConfig.terminalTextColor; document.getElementById('cfg-term-size').value = currentUiConfig.terminalFontSize;
+                document.getElementById('admin-error').classList.add('hidden'); switchAdminTab(currentActiveAdminTab); modal.classList.remove("hidden");
+            } else { modal.classList.add("hidden"); }
+        }
+
+        function switchAdminTab(tabName) {
+            currentActiveAdminTab = tabName; const btnQuests = document.getElementById("btn-tab-quests"); const btnUi = document.getElementById("btn-tab-ui"); const contentQuests = document.getElementById("tab-content-quests"); const contentUi = document.getElementById("tab-content-ui");
+            if(tabName === "ui") { btnQuests.classList.remove("active"); btnUi.classList.add("active"); contentQuests.classList.add("hidden"); contentUi.classList.remove("hidden"); } 
+            else { btnQuests.classList.add("active"); btnUi.classList.remove("active"); contentQuests.classList.remove("hidden"); contentUi.classList.add("hidden"); }
+        }
+
+        async function saveAllConfigData() {
+            const editorData = document.getElementById('json-editor').value; const errorBox = document.getElementById('admin-error'); let parsedQuests = null;
+            try { parsedQuests = JSON.parse(editorData); localStorage.setItem('contraQuestsData', JSON.stringify(parsedQuests)); quests = parsedQuests; } 
+            catch (error) { switchAdminTab('quests'); errorBox.innerText = "❌ รูปแบบข้อมูลด่าน JSON ผิดพลาด: " + error.message; errorBox.classList.remove('hidden'); return; }
+            const updatedUiConfig = { gameTitle: document.getElementById('cfg-game-title').value.trim() || "CODE CONTRA", gameTag: document.getElementById('cfg-game-tag').value.trim() || "TERMINAL", accentColor: document.getElementById('cfg-accent-color').value, bgTheme: document.getElementById('cfg-bg-theme').value, terminalTextColor: document.getElementById('cfg-term-color').value, terminalFontSize: document.getElementById('cfg-term-size').value };
+            localStorage.setItem('contraUiConfig', JSON.stringify(updatedUiConfig)); currentUiConfig = updatedUiConfig;
+            try { await fetch('save-quests.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsedQuests) }); await fetch('save-ui-config.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedUiConfig) }); } catch (err) { console.error("HQ Warning: บันทึกข้อมูลไปหลังบ้านขัดข้อง", err); }
+            errorBox.classList.add('hidden'); toggleAdminModal(); restartGame();
+        }
+
+        function resetToDefaultData() {
+            if(confirm("ต้องการล้างการตั้งค่าทั้งหมด และเริ่มเล่นใหม่ตั้งแต่ต้นใช่หรือไม่? (เซฟเกมจะถูกลบด้วย)")) {
+                localStorage.removeItem('contraQuestsData'); 
+                localStorage.removeItem('contraUiConfig'); 
+                localStorage.removeItem('contraProgress'); 
+                localStorage.removeItem('contraProgressHard');
+                localStorage.removeItem('contraMaxRecord');
+                restartGame();
+            }
+        }
+
+        function restartGame() { window.location.reload(); }
+
+        window.onload = () => {
+            initUiConfig(); initGameData(); loadSavedAvatar(); loadSavedEnemy(); 
+            
+            let originalMode = isHardMode;
+            isHardMode = false; checkSavedProgress(); 
+            isHardMode = true; checkSavedProgress(); 
+            isHardMode = originalMode;
+            
+            loadMaxRecordUI();
+            
+            const splash = document.getElementById('splash-screen');
+            const start = document.getElementById('start-screen');
+            
+            setTimeout(() => {
+                splash.classList.add('opacity-0');
+                setTimeout(() => { 
+                    splash.classList.add('hidden'); 
+                    splash.classList.remove('flex'); 
+                    
+                    start.classList.remove('hidden'); 
+                    startBgCodeAnimation();
+                }, 1000); 
+            }, 2500); 
+        };
+    </script>
+</body>
+</html>
